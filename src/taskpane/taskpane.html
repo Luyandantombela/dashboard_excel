@@ -163,6 +163,13 @@
     <div class="test-note" id="testNote" style="display:none;">Workflows aren't wired up yet — this switch will control click-actions once we build them. Elements you've placed still sit on the sheet either way.</div>
   </div>
 
+  <div style="padding:14px;background:#FCEFD9;border-bottom:1px solid var(--line);">
+    <div style="font-size:11px;font-weight:700;margin-bottom:6px;">🧪 Bridge test (temporary)</div>
+    <button class="btn btn-dark" style="margin-bottom:6px;" onclick="bridgeWrite()">Write test value from task pane</button>
+    <button class="btn btn-primary" onclick="bridgeRead()">Read current value</button>
+    <div id="bridgeStatus" style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;background:#fff;padding:8px;border-radius:6px;white-space:pre-wrap;">Not checked yet.</div>
+  </div>
+
   <div id="mainScroll">
 
     <div class="section"><div class="section-label">Visual</div></div>
@@ -346,16 +353,16 @@ async function addVisual(type){
         shape.textFrame.textRange.font.color = '#FFFFFF';
         shape.textFrame.textRange.font.bold = true;
       } else if(type==='icon'){
-        try{
-          const svgMarkup = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="#12181F" d="M13 2L3 14h7l-1 8 11-13h-7l1-7z"/></svg>';
-          shape = sheet.shapes.addSvg(svgMarkup);
-          shape.left = 60; shape.top = 60; shape.width = 32; shape.height = 32;
-        } catch(svgErr){
-          shape = sheet.shapes.addGeometricShape(Excel.GeometricShapeType.oval);
-          shape.left = 60; shape.top = 60; shape.width = 36; shape.height = 36;
-          shape.fill.setSolidColor('#FFFFFF');
-          shape.textFrame.textRange.text = '⚡';
-        }
+        shape = sheet.shapes.addGeometricShape(Excel.GeometricShapeType.oval);
+        shape.left = 60; shape.top = 60; shape.width = 40; shape.height = 40;
+        shape.fill.setSolidColor('#FFFFFF');
+        shape.lineFormat.color = '#12181F';
+        shape.lineFormat.weight = 1.5;
+        shape.textFrame.textRange.text = '⚡';
+        shape.textFrame.textRange.font.size = 18;
+        shape.textFrame.textRange.font.color = '#12181F';
+        shape.textFrame.horizontalAlignment = Excel.ShapeTextHorizontalAlignment.center;
+        shape.textFrame.verticalAlignment = Excel.ShapeTextVerticalAlignment.middle;
       } else if(type==='text'){
         shape = sheet.shapes.addTextBox('Double-click to edit directly on the sheet');
         shape.left = 60; shape.top = 60; shape.width = 200; shape.height = 26;
@@ -807,6 +814,20 @@ async function applyLayout(name){
 function showGlobalError(msg){
   const wrap = document.getElementById('configFormWrap');
   wrap.innerHTML = `<div class="config-form"><div class="status-msg err">${msg}</div></div>`;
+}
+
+// ---------------- Bridge test ----------------
+function bridgeWrite(){
+  Office.context.document.settings.set('overlay_bridge_test', 'Written from TASK PANE at ' + new Date().toLocaleTimeString());
+  Office.context.document.settings.saveAsync((result)=>{
+    document.getElementById('bridgeStatus').textContent = result.status === Office.AsyncResultStatus.Succeeded
+      ? 'Saved. Now check the content add-in.'
+      : 'Save failed: ' + result.error.message;
+  });
+}
+function bridgeRead(){
+  const val = Office.context.document.settings.get('overlay_bridge_test');
+  document.getElementById('bridgeStatus').textContent = val ? ('Found value:\n' + val) : 'No value found. Write one from either surface, then reload this one.';
 }
 </script>
 </body>
