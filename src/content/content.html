@@ -10,33 +10,21 @@
 <style>
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;font-family:'Inter',sans-serif;background:#fff;}
-  #wrap{position:relative;width:100%;height:100%;overflow:auto;}
-  #canvas{position:relative;min-width:100%;min-height:100%;}
-  #toolbar{position:sticky;top:0;left:0;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#FAFBFC;border-bottom:1px solid #E4E7EB;z-index:50;}
-  #toolbar .label{font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:600;color:#1C232B;}
-  #toolbar .sub{font-size:9.5px;color:#9AA2AC;font-family:'JetBrains Mono',monospace;}
-  #refreshBtn{background:#12181F;color:#fff;border:none;font-size:10.5px;font-weight:600;padding:6px 12px;border-radius:6px;cursor:pointer;}
+  #canvas{position:relative;width:100%;height:100%;overflow:auto;}
   #emptyMsg{padding:40px 20px;text-align:center;color:#9AA2AC;font-size:12px;line-height:1.6;}
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="toolbar">
-    <div>
-      <div class="label">Published dashboard</div>
-      <div class="sub" id="publishedAt">—</div>
-    </div>
-    <button id="refreshBtn" onclick="loadAndRender()">Refresh</button>
-  </div>
-  <div id="canvas"></div>
-</div>
+<div id="canvas"></div>
 
 <script>
-Office.onReady(() => { loadAndRender(); });
+Office.onReady(() => {
+  loadAndRender();
+  watchForChanges();
+});
 
 async function loadAndRender(){
   const canvas = document.getElementById('canvas');
-  const stamp = document.getElementById('publishedAt');
   canvas.innerHTML = '';
   try{
     await Excel.run(async (context)=>{
@@ -45,8 +33,7 @@ async function loadAndRender(){
       await context.sync();
       const existing = sheets.items.find(s => s.name === '_OverlayData');
       if (!existing) {
-        canvas.innerHTML = '<div id="emptyMsg">No dashboard published yet. Open the Overlay task pane, design one, and click Publish.</div>';
-        stamp.textContent = 'Nothing published';
+        canvas.innerHTML = '<div id="emptyMsg">No dashboard published yet.</div>';
         return;
       }
       const sheet = sheets.getItem('_OverlayData');
@@ -56,7 +43,6 @@ async function loadAndRender(){
       const raw = cell.values[0][0];
       if (!raw) {
         canvas.innerHTML = '<div id="emptyMsg">No dashboard published yet.</div>';
-        stamp.textContent = 'Nothing published';
         return;
       }
       const arr = JSON.parse(raw);
@@ -65,11 +51,34 @@ async function loadAndRender(){
         node.style.pointerEvents = 'none'; // read-only surface
         canvas.appendChild(node);
       });
-      stamp.textContent = arr.length + ' element' + (arr.length===1?'':'s') + ' · refreshed ' + new Date().toLocaleTimeString();
     });
   } catch(err){
     console.error(err);
-    canvas.innerHTML = '<div id="emptyMsg">Could not load dashboard: ' + (err.message||err) + '</div>';
+    canvas.innerHTML = '<div id="emptyMsg">Could not load dashboard.</div>';
+  }
+}
+
+// Auto-refresh whenever the hidden data sheet changes, from any surface —
+// no visible button needed.
+async function watchForChanges(){
+  try{
+    await Excel.run(async (context)=>{
+      context.workbook.worksheets.onChanged.add(async (event) => {
+        try{
+          await Excel.run(async (ctx)=>{
+            const ws = ctx.workbook.worksheets.getItem(event.worksheetId);
+            ws.load('name');
+            await ctx.sync();
+            if (ws.name === '_OverlayData') {
+              loadAndRender();
+            }
+          });
+        } catch(e){ console.error(e); }
+      });
+      await context.sync();
+    });
+  } catch(err){
+    console.error('Could not register change watcher:', err);
   }
 }
 </script>
