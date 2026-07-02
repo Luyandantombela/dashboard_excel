@@ -89,10 +89,43 @@ window.OverlayElements = (function () {
     applyStyle(node, baseStyle(el));
 
     switch (el.type) {
-      case 'button':
-        applyStyle(node, { background: el.fill || '#1E7F5C', color: '#fff', fontWeight: '600', fontSize: '13px', border: 'none' });
+      case 'button': {
+        const m = el.meta || {};
+        ensureFontLoaded(m.fontFamily);
+        const textColor = el.fill || '#FFFFFF';
+        const bgColor = m.bg || '#1E7F5C';
+        const borderStyle = m.borderStyle || 'none';
+        const borderRadius = m.radius != null ? m.radius : 8;
+        const borderWidth = m.borderWidth || 1;
+        const borderColor = m.borderColor || '#000000';
+        let border = 'none';
+        if (borderStyle !== 'none') {
+          border = `${borderWidth}px ${borderStyle} ${borderColor}`;
+        }
+        applyStyle(node, {
+          background: bgColor,
+          color: textColor,
+          fontWeight: m.bold ? '700' : (m.fontWeight || '600'),
+          fontSize: (m.fontSize || 13) + 'px',
+          fontFamily: "'" + (m.fontFamily || 'Inter') + "', sans-serif",
+          fontStyle: m.italic ? 'italic' : 'normal',
+          textDecoration: m.underline ? 'underline' : 'none',
+          justifyContent: m.align === 'center' ? 'center' : (m.align === 'right' ? 'flex-end' : 'center'),
+          textAlign: m.align || 'center',
+          paddingLeft: '12px',
+          paddingRight: '12px',
+          borderRadius: borderRadius + 'px',
+          border: border,
+          opacity: m.opacity != null ? m.opacity : 1,
+          wordSpacing: (m.wordSpacing || 0) + 'px',
+          lineHeight: (m.lineSpacing || 1.4),
+          letterSpacing: (m.letterSpacing || 0) + 'px',
+          boxShadow: m.shadowStyle === 'none' ? 'none' : (m.shadowStyle || '0 2px 8px rgba(0,0,0,0.15)'),
+          textShadow: m.showTextShadow ? (m.textShadowStyle || '0 1px 2px rgba(0,0,0,0.2)') : 'none'
+        });
         node.textContent = el.label || 'Button';
         break;
+      }
       case 'icon':
         applyStyle(node, { background: '#fff', border: '1.5px solid #12181F', color: '#12181F' });
         node.innerHTML = iconSVG();
