@@ -5,6 +5,17 @@
 
 window.OverlayElements = (function () {
 
+  const SYSTEM_FONTS = new Set(['Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma','Trebuchet MS']);
+  const loadedFonts = new Set(['Inter','Space Grotesk','JetBrains Mono']); // already linked in <head> by both surfaces
+  function ensureFontLoaded(font){
+    if (!font || SYSTEM_FONTS.has(font) || loadedFonts.has(font)) return;
+    loadedFonts.add(font);
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=' + font.replace(/ /g,'+') + ':wght@400;500;600;700&display=swap';
+    document.head.appendChild(link);
+  }
+
   const TYPE_LABELS = {
     button: 'Button', icon: 'Icon', image: 'Image', text: 'Text', shape: 'Shape', graph: 'Graph',
     group: 'Group', repeating: 'Repeating group', popup: 'Popup', floating: 'Floating group',
@@ -88,6 +99,7 @@ window.OverlayElements = (function () {
         break;
       case 'text': {
         const m = el.meta || {};
+        ensureFontLoaded(m.fontFamily);
         applyStyle(node, {
           background: m.bg || 'transparent',
           color: el.fill || '#1C232B',
