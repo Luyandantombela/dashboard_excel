@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="../shared/elements.js"></script>
 <style>
   :root{
@@ -105,6 +106,32 @@
   .ctx-item:hover{background:var(--emerald-soft);}
   .ctx-item.danger{color:#A83A32;}
   .ctx-item.danger:hover{background:#FBEAE8;}
+  .icon-picker {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 6px;
+  }
+  .icon-picker-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .icon-picker-item:hover {
+    border-color: var(--emerald);
+    background: var(--emerald-soft);
+  }
+  .icon-picker-item.active {
+    border-color: var(--emerald);
+    background: var(--emerald-soft);
+  }
 </style>
 </head>
 <body>
@@ -818,6 +845,112 @@ function renderTab(tab, id) {
       if (borderBtn) {
         borderBtn.addEventListener('click', function(){
           openColorPicker(this, (elements[id].meta && elements[id].meta.borderColor) || '#000000',
+            (hex)=>{ setMeta(id, 'borderColor', hex); document.getElementById('borderColorChip').style.background=hex; },
+            ()=>{ pushHistory(); });
+        });
+      }
+    }
+  } else if (tab === 'appearance' && el.type === 'icon') {
+    const m = el.meta || {};
+    const borderStyles = ['none','solid','dashed','dotted'];
+    const shadowStyles = ['none','0 2px 4px rgba(0,0,0,0.1)','0 4px 8px rgba(0,0,0,0.15)','0 8px 16px rgba(0,0,0,0.2)','0 16px 32px rgba(0,0,0,0.25)'];
+    const iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
+    body.innerHTML = `
+      <div class="field">
+        <div class="field-label">Icon</div>
+        <div class="icon-picker" id="iconPicker">
+          ${iconList.map(iconName => `
+            <div class="icon-picker-item ${(m.iconName||'zap')===iconName?'active':''}" data-icon="${iconName}" onclick="setMeta('${id}','iconName','${iconName}')">
+              <i data-lucide="${iconName}"></i>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Icon size</div>
+          <input class="field-input mono" type="number" value="${m.iconSize||24}" oninput="setMeta('${id}','iconSize',parseFloat(this.value)||24)" onblur="pushHistory()">
+        </div>
+        <div class="field">
+          <div class="field-label">Opacity</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="field-input mono" type="number" min="0" max="100" value="${Math.round((m.opacity!=null?m.opacity*100:100))}" oninput="setMeta('${id}','opacity',parseFloat(this.value)/100)" onblur="pushHistory()" style="flex:1;">
+            <span style="color:var(--text-faint);width:28px;text-align:right;">%</span>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Icon color</div>
+        <button class="color-swatch-btn" id="iconColorSwatchBtn" type="button">
+          <span class="chip" id="iconColorChip" style="background:${el.fill||'#12181F'}"></span>
+          <span class="hex-label" id="iconColorHex">${el.fill||'#12181F'}</span>
+        </button>
+      </div>
+      <div class="field">
+        <div class="field-label">Background color</div>
+        <div style="display:flex;gap:6px;">
+          <button class="color-swatch-btn" id="bgColorSwatchBtn" type="button" style="flex:1;">
+            <span class="chip" id="bgColorChip" style="background:${m.bg||'transparent'};${!m.bg?'background-image:repeating-conic-gradient(#D8DCE1 0% 25%, #fff 0% 50%);':''}"></span>
+            <span class="hex-label" id="bgColorHex">${m.bg||'None'}</span>
+          </button>
+          <button class="style-toggle" id="bgNoneBtn" type="button" title="Remove background">✕</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Border style</div>
+          <select class="field-input" onchange="setMeta('${id}','borderStyle',this.value)">
+            ${borderStyles.map(s=>`<option value="${s}" ${((m.borderStyle||'solid')===s)?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Roundness</div>
+          <input class="field-input mono" type="number" value="${m.radius!=null?m.radius:8}" oninput="setMeta('${id}','radius',parseFloat(this.value)||0)" onblur="pushHistory()">
+        </div>
+      </div>
+      ${m.borderStyle!=='none'?`
+        <div class="field-row">
+          <div class="field">
+            <div class="field-label">Border width</div>
+            <input class="field-input mono" type="number" value="${m.borderWidth||1.5}" oninput="setMeta('${id}','borderWidth',parseFloat(this.value)||1.5)" onblur="pushHistory()">
+          </div>
+          <div class="field">
+            <div class="field-label">Border color</div>
+            <button class="color-swatch-btn" id="borderColorSwatchBtn" type="button">
+              <span class="chip" id="borderColorChip" style="background:${m.borderColor||'#12181F'}"></span>
+            </button>
+          </div>
+        </div>
+      `:''}
+      <div class="field">
+        <div class="field-label">Element shadow</div>
+        <select class="field-input" onchange="setMeta('${id}','shadowStyle',this.value)">
+          ${shadowStyles.map((s, i)=>`<option value="${s}" ${((m.shadowStyle||'none')===s)?'selected':''}>${s==='none'?'None':['Light','Medium','Heavy','Extra Heavy'][i-1]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="divider"></div>
+      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+    `;
+    // Initialize Lucide icons in picker
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+    document.getElementById('iconColorSwatchBtn').addEventListener('click', function(){
+      openColorPicker(this, elements[id].fill || '#12181F',
+        (hex)=>{ liveSetFill(id, hex); document.getElementById('iconColorChip').style.background=hex; document.getElementById('iconColorHex').textContent=hex; },
+        ()=>{ commitColorChange(id); });
+    });
+    document.getElementById('bgColorSwatchBtn').addEventListener('click', function(){
+      openColorPicker(this, (elements[id].meta && elements[id].meta.bg) || '#FFFFFF',
+        (hex)=>{ liveSetBg(id, hex); document.getElementById('bgColorChip').style.cssText='background:'+hex+';'; document.getElementById('bgColorHex').textContent=hex; },
+        ()=>{ commitColorChange(id); });
+    });
+    document.getElementById('bgNoneBtn').addEventListener('click', ()=>{ setMeta(id,'bg',null); });
+    if (m.borderStyle!=='none') {
+      const borderBtn = document.getElementById('borderColorSwatchBtn');
+      if (borderBtn) {
+        borderBtn.addEventListener('click', function(){
+          openColorPicker(this, (elements[id].meta && elements[id].meta.borderColor) || '#12181F',
             (hex)=>{ setMeta(id, 'borderColor', hex); document.getElementById('borderColorChip').style.background=hex; },
             ()=>{ pushHistory(); });
         });
