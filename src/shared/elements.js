@@ -86,10 +86,24 @@ window.OverlayElements = (function () {
         applyStyle(node, { background: '#fff', border: '1.5px solid #12181F', color: '#12181F' });
         node.innerHTML = iconSVG();
         break;
-      case 'text':
-        applyStyle(node, { background: 'transparent', color: el.fill || '#1C232B', fontSize: '14px', fontWeight: '500', justifyContent: 'flex-start', paddingLeft: '2px' });
+      case 'text': {
+        const m = el.meta || {};
+        applyStyle(node, {
+          background: m.bg || 'transparent',
+          color: el.fill || '#1C232B',
+          fontSize: (m.fontSize || 14) + 'px',
+          fontFamily: "'" + (m.fontFamily || 'Inter') + "', sans-serif",
+          fontWeight: m.bold ? '700' : '500',
+          fontStyle: m.italic ? 'italic' : 'normal',
+          textDecoration: m.underline ? 'underline' : 'none',
+          justifyContent: m.align === 'center' ? 'center' : (m.align === 'right' ? 'flex-end' : 'flex-start'),
+          textAlign: m.align || 'left',
+          paddingLeft: '2px',
+          borderRadius: (m.radius != null ? m.radius : 8) + 'px'
+        });
         node.textContent = el.label || 'Text';
         break;
+      }
       case 'shape':
         applyStyle(node, { background: el.fill || '#E8A33D', border: '1.5px solid ' + (el.fill || '#E8A33D') });
         break;
