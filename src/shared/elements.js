@@ -25,7 +25,7 @@ window.OverlayElements = (function () {
 
   const DEFAULTS = {
     button:   { w:120, h:40,  label:'Refresh view' },
-    icon:     { w:44,  h:44,  label:'' },
+    icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24 } },
     image:    { w:160, h:110, label:'Image' },
     text:     { w:180, h:28,  label:'Section title' },
     shape:    { w:90,  h:90,  label:'' },
@@ -43,9 +43,85 @@ window.OverlayElements = (function () {
     upload:   { w:200, h:80,  label:'Drop file or browse' }
   };
 
-  function iconSVG() {
-    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 11-13h-7l1-7z"/></svg>';
-  }
+  // Most popular Lucide icons for dashboards
+  const ICONS = [
+    'zap', 'home', 'user', 'users', 'settings', 'search', 'bell', 'mail', 'calendar', 'clock',
+    'folder', 'file', 'file-text', 'image', 'download', 'upload', 'star', 'heart', 'check', 'x',
+    'plus', 'minus', 'trash', 'edit', 'save', 'share', 'link', 'external-link', 'copy', 'paste',
+    'filter', 'sort', 'arrow-up', 'arrow-down', 'arrow-left', 'arrow-right', 'chevron-up', 'chevron-down',
+    'chevron-left', 'chevron-right', 'menu', 'grid', 'list', 'bar-chart', 'bar-chart-2', 'pie-chart',
+    'line-chart', 'area-chart', 'target', 'trending-up', 'trending-down', 'activity', 'pulse', 'database',
+    'server', 'cloud', 'cloud-upload', 'cloud-download', 'hard-drive', 'cpu', 'monitor', 'laptop',
+    'smartphone', 'tablet', 'printer', 'wifi', 'bluetooth', 'battery', 'lock', 'unlock', 'key', 'shield',
+    'shield-check', 'alert-triangle', 'info', 'help-circle', 'alert-circle', 'check-circle', 'x-circle',
+    'minus-circle', 'plus-circle', 'circle', 'square', 'triangle', 'hexagon', 'star', 'sun', 'moon',
+    'cloud-rain', 'cloud-lightning', 'cloud-snow', 'wind', 'droplets', 'thermometer', 'globe', 'map-pin',
+    'map', 'navigation', 'compass', 'phone', 'phone-call', 'voicemail', 'message-square', 'message-circle',
+    'inbox', 'send', 'mail-check', 'at-sign', 'book', 'book-open', 'bookmark', 'bookmark-check', 'library',
+    'graduation-cap', 'award', 'trophy', 'medal', 'gift', 'package', 'shopping-cart', 'shopping-bag',
+    'credit-card', 'wallet', 'dollar-sign', 'euro', 'pound-sterling', 'yen', 'rupee', 'bitcoin', 'cash',
+    'receipt', 'file-invoice', 'file-dollar', 'file-plus', 'file-minus', 'file-x', 'file-check', 'folder-plus',
+    'folder-minus', 'folder-x', 'folder-check', 'folder-open', 'folder-sync', 'folder-key', 'folder-lock',
+    'layers', 'layout', 'columns', 'grid-3x3', 'grid-2x2', 'layout-grid', 'layout-list', 'layout-dashboard',
+    'sliders-horizontal', 'sliders', 'gauge', 'speedometer', 'thermometer-sun', 'thermometer-snowflake', 'thermometer-half',
+    'percent', 'ratio', 'divide', 'equals', 'not-equals', 'greater-than', 'less-than', 'greater-than-equal',
+    'less-than-equal', 'infinity', 'pi', 'function-square', 'calculator', 'scissors', 'clipboard', 'clipboard-check',
+    'clipboard-list', 'clipboard-x', 'clipboard-pen', 'clipboard-pen-line', 'edit-3', 'edit-2', 'edit-3',
+    'pencil', 'pen', 'pen-tool', 'pen-line', 'pen-square', 'pen-square-line', 'highlighter', 'eraser',
+    'type', 'bold', 'italic', 'underline', 'strikethrough', 'align-left', 'align-center', 'align-right',
+    'align-justify', 'list', 'list-ordered', 'indent', 'outdent', 'link-2', 'link-2-off', 'image-plus',
+    'image-minus', 'image-x', 'image-check', 'camera', 'video', 'mic', 'mic-off', 'play', 'pause',
+    'stop', 'skip-forward', 'skip-back', 'rewind', 'fast-forward', 'volume-2', 'volume-x', 'volume-1', 'volume',
+    'maximize', 'minimize', 'fullscreen', 'fullscreen-exit', 'expand', 'shrink', 'corner-down-left', 'corner-down-right',
+    'corner-left-down', 'corner-left-up', 'corner-right-down', 'corner-right-up', 'corner-up-left', 'corner-up-right',
+    'move', 'move-3d', 'move-up', 'move-down', 'move-left', 'move-right', 'rotate-cw', 'rotate-ccw',
+    'flip-vertical', 'flip-horizontal', 'refresh-cw', 'refresh-ccw', 'repeat', 'repeat-1', 'shuffle', 'sync',
+    'arrow-up-circle', 'arrow-down-circle', 'arrow-left-circle', 'arrow-right-circle', 'arrow-up-right', 'arrow-down-right',
+    'arrow-down-left', 'arrow-up-left', 'arrow-right-circle', 'arrow-left-circle', 'arrow-up-circle', 'arrow-down-circle',
+    'chevron-up-circle', 'chevron-down-circle', 'chevron-left-circle', 'chevron-right-circle', 'chevrons-up', 'chevrons-down',
+    'chevrons-left', 'chevrons-right', 'arrow-right', 'arrow-left', 'arrow-up', 'arrow-down', 'arrow-down-left', 'arrow-down-right',
+    'arrow-up-left', 'arrow-up-right', 'corner-down-left', 'corner-down-right', 'corner-left-down', 'corner-left-up',
+    'corner-right-down', 'corner-right-up', 'corner-up-left', 'corner-up-right', 'move', 'move-3d', 'move-up', 'move-down',
+    'move-left', 'move-right', 'rotate-cw', 'rotate-ccw', 'flip-vertical', 'flip-horizontal', 'refresh-cw', 'refresh-ccw',
+    'repeat', 'repeat-1', 'shuffle', 'sync', 'sync-off', 'download', 'upload', 'folder-down', 'folder-up',
+    'folder-sync', 'file-down', 'file-up', 'file-sync', 'cloud-download', 'cloud-upload', 'cloud-sync', 'cloud-rain',
+    'cloud-snow', 'cloud-lightning', 'cloud-fog', 'cloud-off', 'sun', 'sunrise', 'sunset', 'moon', 'moon-stars',
+    'stars', 'sparkles', 'flame', 'fire', 'wind', 'droplet', 'droplets', 'snowflake', 'cloud', 'umbrella',
+    'thermometer', 'thermometer-sun', 'thermometer-snowflake', 'thermometer-half', 'thermometer-quarter', 'thermometer-three-quarters',
+    'wind', 'wind-arrow-down', 'wind-arrow-up', 'wind-arrow-right', 'wind-arrow-left', 'tornado', 'tornado-icon', 'tornado-icon-alt',
+    'eye', 'eye-off', 'eye-open', 'eye-closed', 'watch', 'clock-1', 'clock-2', 'clock-3', 'clock-4',
+    'clock-5', 'clock-6', 'clock-7', 'clock-8', 'clock-9', 'clock-10', 'clock-11', 'clock-12', 'calendar',
+    'calendar-check', 'calendar-x', 'calendar-minus', 'calendar-plus', 'calendar-range', 'calendar-clock', 'calendar-days',
+    'calendar-week', 'calendar-month', 'calendar-year', 'calendar-arrow-down', 'calendar-arrow-up', 'calendar-arrow-left', 'calendar-arrow-right',
+    'user', 'users', 'user-plus', 'user-minus', 'user-x', 'user-check', 'user-pen', 'user-square',
+    'user-square-check', 'user-square-x', 'user-square-minus', 'user-square-plus', 'user-check', 'user-x', 'user-pen',
+    'user-circle', 'user-circle-check', 'user-circle-x', 'user-circle-minus', 'user-circle-plus', 'user-search', 'user-cog',
+    'user-star', 'user-heart', 'user-lock', 'user-unlock', 'user-key', 'user-shield', 'user-shield-check',
+    'user-shield-x', 'user-shield-minus', 'user-shield-plus', 'user-shield-search', 'user-shield-cog', 'user-shield-star', 'user-shield-heart',
+    'user-shield-lock', 'user-shield-unlock', 'user-shield-key', 'crown', 'scepter', 'throne', 'castle',
+    'building', 'building-2', 'building-4', 'apartment', 'hotel', 'hospital', 'school', 'library',
+    'bank', 'university', 'factory', 'construction', 'scaffold', 'hard-hat', 'tool', 'wrench', 'screwdriver',
+    'hammer', 'drill', 'saw', 'axe', 'chainsaw', 'pipe', 'pipe-wrench', 'pliers', 'wire', 'wire-off',
+    'wifi', 'wifi-off', 'wifi-0', 'wifi-1', 'wifi-2', 'wifi-3', 'bluetooth', 'bluetooth-off', 'bluetooth-connected',
+    'bluetooth-searching', 'bluetooth-paired', 'bluetooth-pairing', 'bluetooth-disconnected', 'battery', 'battery-charging', 'battery-full',
+    'battery-half', 'battery-low', 'battery-empty', 'battery-off', 'plug', 'plug-zap', 'plug-x', 'plug-off',
+    'power', 'power-off', 'lightbulb', 'lightbulb-off', 'lightbulb-zap', 'lamp', 'lamp-desk', 'lamp-floor',
+    'lamp-wall', 'lamp-ceiling', 'lamp-table', 'tv', 'tv-2', 'monitor', 'monitor-off', 'monitor-speaker',
+    'laptop', 'laptop-2', 'tablet', 'smartphone', 'smartphone-nfc', 'smartphone-message', 'smartphone-call', 'smartphone-lock',
+    'smartphone-unlock', 'smartphone-key', 'smartphone-shield', 'smartphone-shield-check', 'printer', 'printer-off', 'printer-check',
+    'printer-x', 'printer-plus', 'printer-minus', 'scanner', 'scanner-off', 'scanner-check', 'scanner-x', 'fax',
+    'fax-off', 'fax-check', 'fax-x', 'mouse-pointer', 'mouse-pointer-click', 'mouse', 'mouse-off', 'touchpad',
+    'gamepad', 'gamepad-2', 'joystick', 'key', 'key-off', 'key-check', 'key-x', 'key-plus', 'key-minus',
+    'lock', 'unlock', 'lock-open', 'lock-keyhole', 'unlock-keyhole', 'keyhole', 'keyhole-square', 'keyhole-circle',
+    'shield', 'shield-off', 'shield-check', 'shield-x', 'shield-minus', 'shield-plus', 'shield-alert', 'shield-half',
+    'shield-zap', 'shield-heart', 'shield-star', 'shield-dollar', 'shield-euro', 'shield-pound', 'shield-yen',
+    'shield-rupee', 'shield-bitcoin', 'shield-cash', 'shield-credit-card', 'shield-wallet', 'shield-gift', 'shield-package',
+    'shield-shopping-cart', 'shield-shopping-bag', 'shield-receipt', 'shield-file-invoice', 'shield-file-dollar', 'shield-file-plus',
+    'shield-file-minus', 'shield-file-x', 'shield-file-check', 'shield-folder-plus', 'shield-folder-minus', 'shield-folder-x',
+    'shield-folder-check', 'shield-folder-open', 'shield-folder-sync', 'shield-folder-key', 'shield-folder-lock'
+  ];
+
+  window.OverlayElements.ICONS = ICONS;
   function chartSVG(title) {
     return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:8px;">${title || 'Chart'}</div>
     <svg width="100%" height="100%" viewBox="0 0 260 110" preserveAspectRatio="none">
@@ -126,10 +202,35 @@ window.OverlayElements = (function () {
         node.textContent = el.label || 'Button';
         break;
       }
-      case 'icon':
-        applyStyle(node, { background: '#fff', border: '1.5px solid #12181F', color: '#12181F' });
-        node.innerHTML = iconSVG();
+      case 'icon': {
+        const m = el.meta || {};
+        const iconName = m.iconName || 'zap';
+        const iconSize = m.iconSize || 24;
+        const iconColor = el.fill || '#12181F';
+        const bgColor = m.bg || 'transparent';
+        const borderStyle = m.borderStyle || 'solid';
+        const borderRadius = m.radius != null ? m.radius : 8;
+        const borderWidth = m.borderWidth || 1.5;
+        const borderColor = m.borderColor || '#12181F';
+        let border = 'none';
+        if (borderStyle !== 'none') {
+          border = `${borderWidth}px ${borderStyle} ${borderColor}`;
+        }
+        applyStyle(node, {
+          background: bgColor,
+          color: iconColor,
+          border: border,
+          borderRadius: borderRadius + 'px',
+          opacity: m.opacity != null ? m.opacity : 1,
+          boxShadow: m.shadowStyle === 'none' ? 'none' : (m.shadowStyle || '0 2px 8px rgba(0,0,0,0.15)')
+        });
+        node.innerHTML = `<i data-lucide="${iconName}" style="width: ${iconSize}px; height: ${iconSize}px;"></i>`;
+        // If lucide is available, render the icon
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
         break;
+      }
       case 'text': {
         const m = el.meta || {};
         ensureFontLoaded(m.fontFamily);
