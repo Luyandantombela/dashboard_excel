@@ -1,1 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Overlay — Content Add-in Test</title>
+<script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  body{font-family:sans-serif;margin:0;padding:16px;background:#fff;}
+  h3{margin:0 0 10px 0;font-size:14px;}
+  button{padding:8px 14px;border-radius:6px;border:none;background:#1E7F5C;color:#fff;font-weight:600;cursor:pointer;margin-right:8px;}
+  #status{margin-top:14px;padding:10px;border-radius:6px;background:#F5F6F8;font-family:monospace;font-size:12px;white-space:pre-wrap;}
+</style>
+</head>
+<body>
+  <h3>Content add-in test surface</h3>
+  <button onclick="writeValue()">Write test value (from content add-in)</button>
+  <button onclick="readValue()">Read current value</button>
+  <div id="status">Loading…</div>
 
+<script>
+Office.onReady(() => {
+  readValue();
+});
+
+async function writeValue(){
+  Office.context.document.settings.set('overlay_bridge_test', 'Written from CONTENT ADD-IN at ' + new Date().toLocaleTimeString());
+  Office.context.document.settings.saveAsync((result)=>{
+    document.getElementById('status').textContent = result.status === Office.AsyncResultStatus.Succeeded
+      ? 'Saved. Now check the task pane.'
+      : 'Save failed: ' + result.error.message;
+  });
+}
+
+function readValue(){
+  const val = Office.context.document.settings.get('overlay_bridge_test');
+  document.getElementById('status').textContent = val
+    ? ('Found value:\n' + val)
+    : 'No value found yet. Write one from either surface, then reload the other.';
+}
+</script>
+</body>
+</html>
