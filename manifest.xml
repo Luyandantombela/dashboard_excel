@@ -12,12 +12,12 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Overlay — Dashboard Builder" />
   <Description DefaultValue="Design interactive dashboards directly on top of your workbook data." />
-  <IconUrl DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-80.png" />
-  <SupportUrl DefaultValue="https://REPLACE_WITH_YOUR_URL" />
+  <IconUrl DefaultValue="https://luyandantombela.github.io/dashboard_excel/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://luyandantombela.github.io/dashboard_excel/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://luyandantombela.github.io/dashboard_excel" />
 
   <AppDomains>
-    <AppDomain>https://REPLACE_WITH_YOUR_URL</AppDomain>
+    <AppDomain>https://luyandantombela.github.io/dashboard_excel</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -25,7 +25,7 @@
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://REPLACE_WITH_YOUR_URL/src/taskpane/taskpane.html" />
+    <SourceLocation DefaultValue="https://luyandantombela.github.io/dashboard_excel/src/taskpane/taskpane.html" />
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -74,14 +74,14 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-32.png" />
-        <bt:Image id="Icon.32x32" DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-32.png" />
-        <bt:Image id="Icon.80x80" DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-80.png" />
+        <bt:Image id="Icon.16x16" DefaultValue="https://luyandantombela.github.io/dashboard_excel/assets/icon-32.png" />
+        <bt:Image id="Icon.32x32" DefaultValue="https://luyandantombela.github.io/dashboard_excel/assets/icon-32.png" />
+        <bt:Image id="Icon.80x80" DefaultValue="https://luyandantombela.github.io/dashboard_excel/assets/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Commands.Url" DefaultValue="https://REPLACE_WITH_YOUR_URL/src/taskpane/taskpane.html" />
-        <bt:Url id="Taskpane.Url" DefaultValue="https://REPLACE_WITH_YOUR_URL/src/taskpane/taskpane.html" />
-        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://REPLACE_WITH_YOUR_URL" />
+        <bt:Url id="Commands.Url" DefaultValue="https://luyandantombela.github.io/dashboard_excel/src/taskpane/taskpane.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://luyandantombela.github.io/dashboard_excel/src/taskpane/taskpane.html" />
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://luyandantombela.github.io/dashboard_excel" />
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="Get started with Overlay!" />
