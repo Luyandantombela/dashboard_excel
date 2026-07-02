@@ -1,1 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Overlay — Dashboard Builder Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root{
+    --ink:#12181F;
+    --ink-soft:#1B232D;
+    --panel:#FFFFFF;
+    --canvas:#F5F6F8;
+    --line:#E4E7EB;
+    --line-soft:#EEF0F3;
+    --text:#1C232B;
+    --text-dim:#6B7480;
+    --text-faint:#9AA2AC;
+    --emerald:#1E7F5C;
+    --emerald-soft:#E4F3EC;
+    --amber:#E8A33D;
+    --amber-soft:#FCEFD9;
+    --danger:#D2534A;
+    --radius:10px;
+    --shadow-lg: 0 20px 48px -12px rgba(18,24,31,0.28), 0 2px 8px rgba(18,24,31,0.08);
+    --shadow-sm: 0 1px 2px rgba(18,24,31,0.06), 0 1px 1px rgba(18,24,31,0.04);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    background:var(--ink);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    width:100vw;
+  }
 
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    height:52px;
+    background:var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 16px;
+    flex-shrink:0;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .topbar-left{display:flex;align-items:center;gap:12px;}
+  .brand{
+    display:flex;align-items:center;gap:8px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    color:#fff;
+    letter-spacing:0.2px;
+  }
+  .brand-mark{
+    width:20px;height:20px;
+    border-radius:5px;
+    background:linear-gradient(135deg, var(--emerald), #14523D);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;font-weight:500;
+    color:#fff;
+  }
+  .workbook-name{
+    font-size:12.5px;
+    color:rgba(255,255,255,0.45);
+    padding-left:12px;
+    border-left:1px solid rgba(255,255,255,0.12);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .topbar-center{
+    display:flex;align-items:center;
+    background:rgba(255,255,255,0.06);
+    border-radius:999px;
+    padding:3px;
+  }
+  .mode-btn{
+    border:none;
+    background:transparent;
+    color:rgba(255,255,255,0.55);
+    font-size:12.5px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    padding:6px 18px;
+    border-radius:999px;
+    cursor:pointer;
+    display:flex;align-items:center;gap:6px;
+    transition:all .18s ease;
+  }
+  .mode-btn.active{
+    background:#fff;
+    color:var(--ink);
+  }
+  .mode-btn.active.test-active{
+    background:var(--emerald);
+    color:#fff;
+  }
+  .mode-btn .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.5;}
+  .mode-btn.active .dot{opacity:1;}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+  .icon-btn{
+    width:30px;height:30px;
+    border-radius:7px;
+    border:1px solid rgba(255,255,255,0.1);
+    background:rgba(255,255,255,0.04);
+    color:rgba(255,255,255,0.6);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .save-btn{
+    background:var(--emerald);
+    color:#fff;
+    border:none;
+    font-size:12.5px;
+    font-weight:600;
+    padding:8px 16px;
+    border-radius:7px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+
+  /* ---------- BODY LAYOUT ---------- */
+  .body-row{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+
+  /* ---------- LEFT RAIL ---------- */
+  .rail{
+    width:236px;
+    background:var(--ink-soft);
+    border-right:1px solid rgba(255,255,255,0.06);
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    transition:margin-left .25s ease, opacity .2s ease;
+  }
+  .rail.hidden-rail{margin-left:-236px;opacity:0;pointer-events:none;}
+  .rail-header{
+    padding:16px 16px 10px 16px;
+  }
+  .rail-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:#fff;
+  }
+  .rail-sub{
+    font-size:11px;
+    color:rgba(255,255,255,0.35);
+    margin-top:2px;
+  }
+  .rail-scroll{
+    flex:1;
+    overflow-y:auto;
+    padding:4px 10px 16px 10px;
+  }
+  .rail-scroll::-webkit-scrollbar{width:6px;}
+  .rail-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
+
+  .element-group{margin-top:14px;}
+  .group-label{
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.32);
+    padding:0 8px 8px 8px;
+  }
+  .element-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .element-chip{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:8px;
+    padding:10px 10px;
+    border-radius:9px;
+    background:rgba(255,255,255,0.035);
+    border:1px solid rgba(255,255,255,0.05);
+    cursor:grab;
+    transition:background .15s ease, border-color .15s ease, transform .1s ease;
+    user-select:none;
+  }
+  .element-chip:hover{
+    background:rgba(30,127,92,0.16);
+    border-color:rgba(30,127,92,0.4);
+  }
+  .element-chip:active{transform:scale(0.97);}
+  .element-chip svg{color:rgba(255,255,255,0.75);flex-shrink:0;}
+  .element-chip:hover svg{color:var(--emerald);}
+  .element-chip-label{
+    font-size:11.5px;
+    color:rgba(255,255,255,0.8);
+    font-weight:500;
+  }
+
+  /* ---------- CANVAS AREA ---------- */
+  .canvas-wrap{
+    flex:1;
+    position:relative;
+    overflow:auto;
+    background:var(--canvas);
+  }
+  .rail-toggle{
+    position:absolute;
+    top:14px;
+    left:14px;
+    z-index:50;
+    width:30px;height:30px;
+    border-radius:7px;
+    background:#fff;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-sm);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    color:var(--text-dim);
+  }
+
+  .sheet{
+    position:relative;
+    width:2400px;
+    height:1400px;
+    background-image:
+      linear-gradient(to right, var(--line-soft) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line-soft) 1px, transparent 1px);
+    background-size:96px 22px;
+    background-color:#fff;
+  }
+  .sheet-header-row, .sheet-header-col{
+    position:absolute;
+    background:#FAFBFC;
+    border-color:var(--line);
+    font-family:'JetBrains Mono',monospace;
+    color:var(--text-faint);
+    font-size:10px;
+  }
+  .col-labels{
+    position:sticky;
+    top:0;
+    display:flex;
+    height:22px;
+    background:#FAFBFC;
+    border-bottom:1px solid var(--line);
+    z-index:5;
+  }
+  .col-label{
+    width:96px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:var(--text-faint);
+    border-right:1px solid var(--line-soft);
+  }
+
+  .overlay-layer{
+    position:absolute;
+    top:0;left:0;
+    width:2400px;height:1400px;
+    z-index:10;
+  }
+
+  /* dashboard elements dropped on canvas */
+  .dash-el{
+    position:absolute;
+    cursor:move;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:box-shadow .12s ease;
+  }
+  .dash-el.selected{
+    box-shadow:0 0 0 2px var(--emerald), 0 0 0 5px var(--emerald-soft);
+  }
+  .dash-el .binding-tag{
+    position:absolute;
+    bottom:-19px;
+    left:0;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9.5px;
+    color:var(--emerald);
+    background:var(--emerald-soft);
+    padding:1px 6px;
+    border-radius:4px;
+    opacity:0;
+    transition:opacity .12s ease;
+    white-space:nowrap;
+  }
+  .dash-el.selected .binding-tag{opacity:1;}
+
+  .el-button{
+    background:var(--ink);
+    color:#fff;
+    font-size:13px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    border:none;
+  }
+  .el-button.pressed{background:var(--emerald);}
+  .el-icon{background:#fff;border:1.5px solid var(--ink);color:var(--ink);}
+  .el-text{background:transparent;color:var(--text);font-size:14px;font-weight:500;justify-content:flex-start;padding-left:2px;}
+  .el-shape{background:var(--amber-soft);border:1.5px solid var(--amber);}
+  .el-image{background:repeating-linear-gradient(45deg,#EFF1F4,#EFF1F4 8px,#F7F8FA 8px,#F7F8FA 16px);border:1.5px dashed var(--text-faint);color:var(--text-faint);font-size:11px;}
+  .el-graph{background:#fff;border:1.5px solid var(--line);flex-direction:column;padding:10px;align-items:stretch;}
+  .el-group{background:rgba(30,127,92,0.04);border:1.5px dashed rgba(30,127,92,0.4);}
+  .el-input{background:#fff;border:1.5px solid var(--line);justify-content:flex-start;padding-left:12px;color:var(--text-faint);font-size:12.5px;}
+  .el-dropdown{background:#fff;border:1.5px solid var(--line);justify-content:space-between;padding:0 12px;color:var(--text-faint);font-size:12.5px;}
+  .el-checkbox{background:#fff;border:1.5px solid var(--line);}
+  .el-slider{background:#fff;border:1.5px solid var(--line);}
+  .el-date{background:#fff;border:1.5px solid var(--line);justify-content:flex-start;padding-left:12px;color:var(--text-faint);font-size:12.5px;}
+  .el-upload{background:#fff;border:1.5px dashed var(--text-faint);color:var(--text-faint);font-size:11px;}
+
+  .resize-handle{
+    position:absolute;
+    width:10px;height:10px;
+    right:-5px;bottom:-5px;
+    background:var(--emerald);
+    border:2px solid #fff;
+    border-radius:3px;
+    cursor:nwse-resize;
+    display:none;
+  }
+  .dash-el.selected .resize-handle{display:block;}
+
+  /* empty state */
+  .empty-hint{
+    position:absolute;
+    top:80px;left:120px;
+    max-width:280px;
+    color:var(--text-faint);
+    font-size:12.5px;
+    line-height:1.6;
+    pointer-events:none;
+  }
+  .empty-hint b{color:var(--text-dim);}
+
+  /* ---------- FLOATING PROPERTY PANEL ---------- */
+  .prop-panel{
+    position:absolute;
+    width:288px;
+    background:var(--panel);
+    border-radius:12px;
+    box-shadow:var(--shadow-lg);
+    border:1px solid var(--line);
+    z-index:100;
+    overflow:hidden;
+    font-family:'Inter',sans-serif;
+  }
+  .prop-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;
+    background:var(--ink);
+    cursor:grab;
+  }
+  .prop-header-left{display:flex;align-items:center;gap:8px;}
+  .prop-title{color:#fff;font-size:12.5px;font-weight:600;font-family:'Space Grotesk',sans-serif;}
+  .prop-close{
+    width:20px;height:20px;
+    border-radius:5px;
+    background:rgba(255,255,255,0.08);
+    border:none;color:rgba(255,255,255,0.6);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .prop-tabs{
+    display:flex;
+    border-bottom:1px solid var(--line);
+    background:#FAFBFC;
+  }
+  .prop-tab{
+    flex:1;
+    padding:10px 0;
+    text-align:center;
+    font-size:11.5px;
+    font-weight:600;
+    color:var(--text-faint);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+  }
+  .prop-tab.active{
+    color:var(--emerald);
+    border-bottom-color:var(--emerald);
+  }
+  .prop-body{
+    padding:14px;
+    max-height:380px;
+    overflow-y:auto;
+  }
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .field-label{
+    font-size:11px;
+    font-weight:600;
+    color:var(--text-dim);
+    margin-bottom:6px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .field-input{
+    width:100%;
+    padding:8px 10px;
+    border-radius:7px;
+    border:1px solid var(--line);
+    font-size:12.5px;
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    background:#fff;
+  }
+  .field-input.mono{font-family:'JetBrains Mono',monospace;font-size:11.5px;}
+  .field-input:focus{outline:none;border-color:var(--emerald);box-shadow:0 0 0 3px var(--emerald-soft);}
+  .binding-field{
+    display:flex;align-items:center;gap:6px;
+    padding:8px 10px;
+    border-radius:7px;
+    border:1px solid var(--emerald);
+    background:var(--emerald-soft);
+  }
+  .binding-field input{
+    border:none;background:transparent;flex:1;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;color:var(--emerald);
+    font-weight:500;
+  }
+  .binding-field input:focus{outline:none;}
+  .field-row{display:flex;gap:8px;}
+  .field-row .field{flex:1;}
+  .swatch-row{display:flex;gap:6px;}
+  .swatch{
+    width:24px;height:24px;border-radius:6px;
+    border:2px solid transparent;cursor:pointer;
+  }
+  .swatch.active{border-color:var(--ink);}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:2px 0;}
+  .toggle-row .field-label{margin:0;}
+  .switch{
+    width:32px;height:18px;border-radius:999px;
+    background:var(--line);position:relative;cursor:pointer;
+    flex-shrink:0;
+  }
+  .switch.on{background:var(--emerald);}
+  .switch::after{
+    content:'';position:absolute;top:2px;left:2px;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    transition:left .15s ease;
+    box-shadow:0 1px 2px rgba(0,0,0,0.2);
+  }
+  .switch.on::after{left:16px;}
+  .divider{height:1px;background:var(--line-soft);margin:14px 0;}
+  .lock-note{
+    display:flex;gap:8px;align-items:flex-start;
+    padding:10px;
+    background:var(--amber-soft);
+    border-radius:8px;
+    font-size:11px;
+    color:#8A5F1B;
+    line-height:1.5;
+  }
+
+  /* view-only banner for test mode */
+  .test-banner{
+    position:absolute;
+    top:14px;left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);
+    color:#fff;
+    font-size:11.5px;
+    font-weight:500;
+    padding:8px 16px;
+    border-radius:999px;
+    display:flex;align-items:center;gap:8px;
+    box-shadow:var(--shadow-sm);
+    z-index:60;
+  }
+  .test-banner .live-dot{
+    width:6px;height:6px;border-radius:50%;background:var(--emerald);
+    box-shadow:0 0 0 3px rgba(30,127,92,0.3);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand"><div class="brand-mark">O</div>Overlay</div>
+      <div class="workbook-name" id="workbookName">Connecting…</div>
+    </div>
+    <div class="topbar-center">
+      <button class="mode-btn active" id="editModeBtn" onclick="setMode('edit')"><span class="dot"></span>Edit</button>
+      <button class="mode-btn" id="testModeBtn" onclick="setMode('test')"><span class="dot"></span>Test</button>
+    </div>
+    <div class="topbar-right">
+      <div class="icon-btn" title="Undo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+      </div>
+      <button class="save-btn">Save dashboard</button>
+    </div>
+  </div>
+
+  <div class="body-row">
+    <div class="rail" id="rail">
+      <div class="rail-header">
+        <div class="rail-title">Elements</div>
+        <div class="rail-sub">Click to add, drag to place</div>
+      </div>
+      <div class="rail-scroll">
+
+        <div class="element-group">
+          <div class="group-label">Visual</div>
+          <div class="element-grid">
+            <div class="element-chip" onclick="addElement('button')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/></svg>
+              <span class="element-chip-label">Button</span>
+            </div>
+            <div class="element-chip" onclick="addElement('icon')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+              <span class="element-chip-label">Icon</span>
+            </div>
+            <div class="element-chip" onclick="addElement('image')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
+              <span class="element-chip-label">Image</span>
+            </div>
+            <div class="element-chip" onclick="addElement('text')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6h14M12 6v14"/></svg>
+              <span class="element-chip-label">Text</span>
+            </div>
+            <div class="element-chip" onclick="addElement('shape')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 18H3z"/></svg>
+              <span class="element-chip-label">Shape</span>
+            </div>
+            <div class="element-chip" onclick="addElement('graph')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M12 19V5M20 19v-7"/></svg>
+              <span class="element-chip-label">Graph</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="element-group">
+          <div class="group-label">Containers</div>
+          <div class="element-grid">
+            <div class="element-chip" onclick="addElement('group')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              <span class="element-chip-label">Group</span>
+            </div>
+            <div class="element-chip" onclick="addElement('repeating')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><rect x="3" y="10" width="18" height="4"/><rect x="3" y="16" width="18" height="4"/></svg>
+              <span class="element-chip-label">Repeating group</span>
+            </div>
+            <div class="element-chip" onclick="addElement('popup')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 6V4h8v2"/></svg>
+              <span class="element-chip-label">Popup</span>
+            </div>
+            <div class="element-chip" onclick="addElement('floating')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="14" height="12" rx="2"/><rect x="3" y="3" width="14" height="12" rx="2" fill="var(--ink-soft)"/></svg>
+              <span class="element-chip-label">Floating group</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="element-group">
+          <div class="group-label">Input forms</div>
+          <div class="element-grid">
+            <div class="element-chip" onclick="addElement('input')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/><path d="M6 12h.01"/></svg>
+              <span class="element-chip-label">Input</span>
+            </div>
+            <div class="element-chip" onclick="addElement('multiline')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M6 9h12M6 13h8"/></svg>
+              <span class="element-chip-label">Multiline</span>
+            </div>
+            <div class="element-chip" onclick="addElement('dropdown')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/><path d="M16 12l2 2 2-2"/></svg>
+              <span class="element-chip-label">Dropdown</span>
+            </div>
+            <div class="element-chip" onclick="addElement('checkbox')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
+              <span class="element-chip-label">Checkbox</span>
+            </div>
+            <div class="element-chip" onclick="addElement('slider')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="14" cy="12" r="3"/></svg>
+              <span class="element-chip-label">Slider</span>
+            </div>
+            <div class="element-chip" onclick="addElement('date')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+              <span class="element-chip-label">Date picker</span>
+            </div>
+            <div class="element-chip" onclick="addElement('upload')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/></svg>
+              <span class="element-chip-label">File upload</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="rail-toggle" onclick="toggleRail()" title="Toggle panel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+      </div>
+
+      <div class="test-banner" id="testBanner" style="display:none;">
+        <span class="live-dot"></span> Test mode — dashboard is live, bindings active
+      </div>
+
+      <div class="sheet" id="sheet">
+        <div class="col-labels" id="colLabels"></div>
+        <div class="overlay-layer" id="overlayLayer">
+          <div class="empty-hint" id="emptyHint">
+            Click any element on the left to drop it here. Drag to reposition,<br>
+            click to select and open its <b>setup panel</b>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let elCount = 0;
+let selectedEl = null;
+let currentMode = 'edit';
+let zTop = 10;
+
+const overlay = document.getElementById('overlayLayer');
+const colLabels = document.getElementById('colLabels');
+
+// build fake column headers A..Z
+for(let i=0;i<25;i++){
+  const c = document.createElement('div');
+  c.className='col-label';
+  c.textContent = String.fromCharCode(65+ (i%26));
+  colLabels.appendChild(c);
+}
+
+const ELEMENT_DEFS = {
+  button:   {cls:'el-button',   w:120,h:40, label:'Refresh view', binding:null},
+  icon:     {cls:'el-icon',     w:44, h:44, label:'', binding:null, icon:true},
+  image:    {cls:'el-image',    w:160,h:110,label:'Image', binding:null},
+  text:     {cls:'el-text',     w:160,h:28, label:'Regional Overview', binding:null},
+  shape:    {cls:'el-shape',    w:90, h:90, label:'', binding:null},
+  graph:    {cls:'el-graph',    w:280,h:170,label:'', binding:'Sheet1!B2:E10', chart:true},
+  group:    {cls:'el-group',    w:320,h:220,label:'Group', binding:null},
+  repeating:{cls:'el-group',    w:320,h:160,label:'Repeating group', binding:'Sheet1!A2:D20'},
+  popup:    {cls:'el-group',    w:280,h:180,label:'Popup', binding:null},
+  floating: {cls:'el-group',    w:260,h:170,label:'Floating group', binding:null},
+  input:    {cls:'el-input',    w:200,h:38, label:'Enter value', binding:null},
+  multiline:{cls:'el-input',    w:220,h:80, label:'Enter notes', binding:null},
+  dropdown: {cls:'el-dropdown', w:200,h:38, label:'Select region', binding:'Sheet1!F2:F8'},
+  checkbox: {cls:'el-checkbox', w:22, h:22, label:'', binding:null},
+  slider:   {cls:'el-slider',   w:180,h:34, label:'', binding:null},
+  date:     {cls:'el-date',     w:180,h:38, label:'Select date', binding:null},
+  upload:   {cls:'el-upload',   w:200,h:80, label:'Drop file or browse', binding:null},
+};
+
+function iconSVG(){
+  return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 11-13h-7l1-7z"/></svg>';
+}
+function chartSVG(){
+  return `<div style="font-size:10.5px;color:var(--text-faint);font-weight:600;margin-bottom:8px;">Revenue by region</div>
+  <svg width="100%" height="100%" viewBox="0 0 260 110" preserveAspectRatio="none">
+    <rect x="10" y="40" width="26" height="60" rx="3" fill="#1E7F5C" opacity="0.85"/>
+    <rect x="50" y="20" width="26" height="80" rx="3" fill="#1E7F5C"/>
+    <rect x="90" y="55" width="26" height="45" rx="3" fill="#1E7F5C" opacity="0.6"/>
+    <rect x="130" y="10" width="26" height="90" rx="3" fill="#1E7F5C" opacity="0.95"/>
+    <rect x="170" y="65" width="26" height="35" rx="3" fill="#1E7F5C" opacity="0.5"/>
+    <rect x="210" y="35" width="26" height="65" rx="3" fill="#1E7F5C" opacity="0.75"/>
+  </svg>`;
+}
+
+function addElement(type){
+  elCount++;
+  const def = ELEMENT_DEFS[type];
+  const id = 'el_'+elCount;
+  const wrap = document.createElement('div');
+  wrap.className = 'dash-el ' + def.cls;
+  wrap.style.width = def.w+'px';
+  wrap.style.height = def.h+'px';
+  wrap.style.left = (140 + (elCount*22)%400)+'px';
+  wrap.style.top = (60 + (elCount*34)%300)+'px';
+  wrap.dataset.type = type;
+  wrap.dataset.id = id;
+  wrap.dataset.binding = def.binding || '';
+  wrap.dataset.label = def.label || '';
+  wrap.style.zIndex = zTop++;
+
+  if(def.icon){ wrap.innerHTML = iconSVG(); }
+  else if(def.chart){ wrap.innerHTML = chartSVG(); }
+  else if(type==='dropdown'){ wrap.innerHTML = `<span>${def.label}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`; }
+  else if(type==='slider'){ wrap.innerHTML = `<div style="position:relative;width:88%;height:3px;background:var(--line);border-radius:2px;"><div style="position:absolute;left:0;top:0;height:3px;width:55%;background:var(--emerald);border-radius:2px;"></div><div style="position:absolute;left:55%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--emerald);"></div></div>`; }
+  else if(type==='checkbox'){ wrap.innerHTML = ''; }
+  else { wrap.innerHTML = `<span>${def.label}</span>`; }
+
+  const tag = document.createElement('div');
+  tag.className='binding-tag';
+  tag.textContent = def.binding ? def.binding : 'not bound';
+  wrap.appendChild(tag);
+
+  const handle = document.createElement('div');
+  handle.className='resize-handle';
+  wrap.appendChild(handle);
+
+  overlay.appendChild(wrap);
+  document.getElementById('emptyHint').style.display='none';
+
+  makeDraggable(wrap, handle);
+  wrap.addEventListener('mousedown', (e)=>{ if(currentMode==='edit'){ selectElement(wrap); } });
+
+  if(currentMode==='edit') selectElement(wrap);
+}
+
+function makeDraggable(wrap, handle){
+  let dragging=false, resizing=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0;
+  wrap.addEventListener('mousedown', (e)=>{
+    if(currentMode!=='edit') return;
+    if(e.target===handle){
+      resizing=true;
+      sx=e.clientX; sy=e.clientY;
+      ow=wrap.offsetWidth; oh=wrap.offsetHeight;
+      e.stopPropagation(); e.preventDefault();
+      return;
+    }
+    dragging=true;
+    sx=e.clientX; sy=e.clientY;
+    ox=wrap.offsetLeft; oy=wrap.offsetTop;
+    wrap.style.zIndex = zTop++;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',(e)=>{
+    if(dragging){
+      wrap.style.left = (ox + (e.clientX-sx))+'px';
+      wrap.style.top = (oy + (e.clientY-sy))+'px';
+      if(wrap===selectedEl) positionPanel(wrap);
+    } else if(resizing){
+      wrap.style.width = Math.max(30, ow + (e.clientX-sx))+'px';
+      wrap.style.height = Math.max(24, oh + (e.clientY-sy))+'px';
+      if(wrap===selectedEl) positionPanel(wrap);
+    }
+  });
+  document.addEventListener('mouseup',()=>{dragging=false; resizing=false;});
+}
+
+let panelEl = null;
+function selectElement(wrap){
+  if(selectedEl) selectedEl.classList.remove('selected');
+  selectedEl = wrap;
+  wrap.classList.add('selected');
+  openPropPanel(wrap);
+}
+
+function positionPanel(wrap){
+  if(!panelEl) return;
+  const canvasWrap = document.getElementById('canvasWrap');
+  const scrollLeft = canvasWrap.scrollLeft, scrollTop = canvasWrap.scrollTop;
+  let left = wrap.offsetLeft + wrap.offsetWidth + 24 - scrollLeft;
+  let top = wrap.offsetTop - scrollTop;
+  const maxLeft = canvasWrap.clientWidth - 300;
+  if(left > maxLeft) left = wrap.offsetLeft - 300 - scrollLeft;
+  panelEl.style.left = left+'px';
+  panelEl.style.top = Math.max(10, top)+'px';
+}
+
+const TYPE_LABELS = {
+  button:'Button', icon:'Icon', image:'Image', text:'Text', shape:'Shape', graph:'Graph',
+  group:'Group', repeating:'Repeating group', popup:'Popup', floating:'Floating group',
+  input:'Input', multiline:'Multiline input', dropdown:'Dropdown', checkbox:'Checkbox',
+  slider:'Slider input', date:'Date picker', upload:'File uploader'
+};
+
+function openPropPanel(wrap){
+  if(panelEl) panelEl.remove();
+  const type = wrap.dataset.type;
+  const panel = document.createElement('div');
+  panel.className='prop-panel';
+  panel.innerHTML = `
+    <div class="prop-header" id="propDragHandle">
+      <div class="prop-header-left">
+        <span class="prop-title">${TYPE_LABELS[type]}</span>
+      </div>
+      <button class="prop-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="prop-tabs">
+      <div class="prop-tab active" data-tab="appearance">Appearance</div>
+      <div class="prop-tab" data-tab="data">Data</div>
+      <div class="prop-tab" data-tab="layout">Layout</div>
+    </div>
+    <div class="prop-body" id="propBody"></div>
+  `;
+  document.getElementById('overlayLayer').appendChild(panel);
+  panelEl = panel;
+  positionPanel(wrap);
+  renderTab('appearance', wrap);
+
+  panel.querySelectorAll('.prop-tab').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      panel.querySelectorAll('.prop-tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      renderTab(t.dataset.tab, wrap);
+    });
+  });
+
+  // draggable panel by header
+  const dh = document.getElementById('propDragHandle');
+  let dragging=false, sx=0, sy=0, ox=0, oy=0;
+  dh.addEventListener('mousedown',(e)=>{
+    dragging=true; sx=e.clientX; sy=e.clientY;
+    ox=panel.offsetLeft; oy=panel.offsetTop;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',(e)=>{
+    if(dragging){
+      panel.style.left=(ox+(e.clientX-sx))+'px';
+      panel.style.top=(oy+(e.clientY-sy))+'px';
+    }
+  });
+  document.addEventListener('mouseup',()=>dragging=false);
+}
+
+function renderTab(tab, wrap){
+  const body = document.getElementById('propBody');
+  const label = wrap.dataset.label;
+  const binding = wrap.dataset.binding;
+
+  if(tab==='appearance'){
+    body.innerHTML = `
+      <div class="field">
+        <div class="field-label">Label / text</div>
+        <input class="field-input" value="${label}" oninput="updateLabel(this.value)">
+      </div>
+      <div class="field">
+        <div class="field-label">Fill color</div>
+        <div class="swatch-row">
+          <div class="swatch active" style="background:#1E7F5C" onclick="setFill('#1E7F5C', this)"></div>
+          <div class="swatch" style="background:#12181F" onclick="setFill('#12181F', this)"></div>
+          <div class="swatch" style="background:#E8A33D" onclick="setFill('#E8A33D', this)"></div>
+          <div class="swatch" style="background:#D2534A" onclick="setFill('#D2534A', this)"></div>
+          <div class="swatch" style="background:#FFFFFF;border:1px solid var(--line)" onclick="setFill('#FFFFFF', this)"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Corner radius</div>
+          <input class="field-input" type="number" value="8" oninput="setRadius(this.value)">
+        </div>
+        <div class="field">
+          <div class="field-label">Opacity</div>
+          <input class="field-input" type="number" value="100">
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="toggle-row">
+        <span class="field-label">Visible on load</span>
+        <div class="switch on"></div>
+      </div>
+    `;
+  } else if(tab==='data'){
+    body.innerHTML = `
+      <div class="field">
+        <div class="field-label">Cell range binding <span style="color:var(--text-faint);font-weight:400;">optional</span></div>
+        <div class="binding-field">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+          <input id="bindingInput" value="${binding || ''}" placeholder="e.g. Sheet1!B2:E10" oninput="updateBinding(this.value)">
+        </div>
+      </div>
+      <button class="save-btn" style="width:100%;font-size:11.5px;padding:8px 0;background:var(--ink);" onclick="useCurrentSelection()">Use current selection in sheet</button>
+      <div style="font-size:10.5px;color:var(--text-faint);margin-top:6px;line-height:1.5;">Select cells in the sheet behind this panel, then click above — the range fills in automatically.</div>
+      <div class="divider"></div>
+      <div class="lock-note">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span>Bindings read live values from the range. Range updates automatically if the user edits their data.</span>
+      </div>
+    `;
+  } else if(tab==='layout'){
+    body.innerHTML = `
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">X</div>
+          <input class="field-input mono" value="${wrap.offsetLeft}" oninput="setPos('left', this.value)">
+        </div>
+        <div class="field">
+          <div class="field-label">Y</div>
+          <input class="field-input mono" value="${wrap.offsetTop}" oninput="setPos('top', this.value)">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Width</div>
+          <input class="field-input mono" value="${wrap.offsetWidth}" oninput="setSize('width', this.value)">
+        </div>
+        <div class="field">
+          <div class="field-label">Height</div>
+          <input class="field-input mono" value="${wrap.offsetHeight}" oninput="setSize('height', this.value)">
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="field">
+        <div class="field-label">Anchor</div>
+        <select class="field-input">
+          <option>Free position</option>
+          <option>Snap to nearest cell</option>
+        </select>
+      </div>
+    `;
+  }
+}
+
+function updateLabel(v){
+  if(!selectedEl) return;
+  selectedEl.dataset.label=v;
+  const span = selectedEl.querySelector('span');
+  if(span) span.textContent=v;
+}
+function updateBinding(v){
+  if(!selectedEl) return;
+  selectedEl.dataset.binding=v;
+  const tag = selectedEl.querySelector('.binding-tag');
+  if(tag) tag.textContent = v || 'not bound';
+}
+function setFill(c, node){
+  if(!selectedEl) return;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+  node.classList.add('active');
+  selectedEl.style.background=c;
+  if(c==='#12181F' || c==='#1E7F5C' || c==='#D2534A'){ selectedEl.style.color='#fff'; }
+  else { selectedEl.style.color='#1C232B'; }
+}
+function setRadius(v){ if(selectedEl) selectedEl.style.borderRadius=v+'px'; }
+function setPos(prop, v){ if(selectedEl){ selectedEl.style[prop]=v+'px'; positionPanel(selectedEl);} }
+function setSize(prop, v){ if(selectedEl){ selectedEl.style[prop]=v+'px'; positionPanel(selectedEl);} }
+
+function closePanel(){
+  if(panelEl) panelEl.remove();
+  panelEl=null;
+  if(selectedEl) selectedEl.classList.remove('selected');
+  selectedEl=null;
+}
+
+document.getElementById('sheet').addEventListener('mousedown', (e)=>{
+  if(e.target.id==='sheet' || e.target.id==='overlayLayer'){
+    closePanel();
+  }
+});
+
+function toggleRail(){
+  document.getElementById('rail').classList.toggle('hidden-rail');
+}
+
+function setMode(mode){
+  currentMode = mode;
+  document.getElementById('editModeBtn').classList.toggle('active', mode==='edit');
+  document.getElementById('testModeBtn').classList.toggle('active', mode==='test');
+  document.getElementById('testModeBtn').classList.toggle('test-active', mode==='test');
+  document.getElementById('testBanner').style.display = mode==='test' ? 'flex':'none';
+  document.getElementById('rail').classList.toggle('hidden-rail', mode==='test');
+
+  if(mode==='test'){
+    closePanel();
+    document.querySelectorAll('.dash-el').forEach(el=>{
+      el.classList.remove('selected');
+      el.style.cursor='pointer';
+      if(el.dataset.type==='button'){
+        el.onclick = ()=>{ el.classList.toggle('pressed'); };
+      }
+    });
+  } else {
+    document.querySelectorAll('.dash-el').forEach(el=>{
+      el.style.cursor='move';
+      el.onclick=null;
+      el.classList.remove('pressed');
+    });
+  }
+}
+
+// seed with a couple of elements so it doesn't look empty
+addElement('graph');
+addElement('text');
+document.querySelectorAll('.dash-el')[1].style.left='140px';
+document.querySelectorAll('.dash-el')[1].style.top='30px';
+closePanel();
+
+// ---------- Live Excel connection ----------
+Office.onReady((info) => {
+  const nameEl = document.getElementById('workbookName');
+  if (info.host === Office.HostType.Excel) {
+    Excel.run(async (context) => {
+      const wb = context.workbook;
+      wb.load('name');
+      await context.sync();
+      nameEl.textContent = wb.name || 'Untitled workbook';
+    }).catch((e) => {
+      nameEl.textContent = 'Excel connected';
+      console.error(e);
+    });
+  } else {
+    nameEl.textContent = 'Preview (not running in Excel)';
+  }
+});
+
+async function useCurrentSelection(){
+  const input = document.getElementById('bindingInput');
+  try{
+    await Excel.run(async (context) => {
+      const range = context.workbook.getSelectedRange();
+      range.load('address');
+      await context.sync();
+      const addr = range.address; // e.g. "Sheet1!B2:E10"
+      if(input) input.value = addr;
+      updateBinding(addr);
+    });
+  } catch(e){
+    console.error(e);
+    if(input){
+      input.placeholder = 'Could not read selection — select cells in the sheet first';
+    }
+  }
+}
+</script>
+</body>
+</html>
