@@ -144,13 +144,22 @@ window.OverlayElements = (function () {
           <path d="M130,55 L170,95 A40,40 0 0,1 90,95 Z" fill="#3B82F6"/>
         `;
         break;
+      case 'column':
+        chartContent = `
+          <rect x="20" y="50" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="65" y="30" width="30" height="70" rx="3" fill="#1E7F5C" opacity="0.75"/>
+          <rect x="110" y="60" width="30" height="40" rx="3" fill="#1E7F5C"/>
+          <rect x="155" y="20" width="30" height="80" rx="3" fill="#1E7F5C" opacity="0.6"/>
+          <rect x="200" y="45" width="30" height="55" rx="3" fill="#1E7F5C" opacity="0.8"/>
+        `;
+        break;
       case 'bar':
         chartContent = `
-          <rect x="30" y="20" width="30" height="70" rx="3" fill="#1E7F5C" opacity="0.9"/>
-          <rect x="75" y="40" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.75"/>
-          <rect x="120" y="10" width="30" height="80" rx="3" fill="#1E7F5C"/>
-          <rect x="165" y="50" width="30" height="40" rx="3" fill="#1E7F5C" opacity="0.6"/>
-          <rect x="210" y="30" width="30" height="60" rx="3" fill="#1E7F5C" opacity="0.8"/>
+          <rect x="30" y="20" width="70" height="20" rx="3" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="50" y="45" width="50" height="20" rx="3" fill="#1E7F5C" opacity="0.75"/>
+          <rect x="20" y="70" width="90" height="20" rx="3" fill="#1E7F5C"/>
+          <rect x="60" y="95" width="60" height="20" rx="3" fill="#1E7F5C" opacity="0.6"/>
+          <rect x="40" y="120" width="80" height="20" rx="3" fill="#1E7F5C" opacity="0.8"/>
         `;
         break;
       case 'histogram':
