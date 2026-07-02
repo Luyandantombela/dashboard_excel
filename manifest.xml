@@ -1,1 +1,97 @@
-df
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+    xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+    xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+    xsi:type="TaskPaneApp">
+
+  <Id>a1b2c3d4-e5f6-4a7b-8c9d-1234567890ab</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Overlay</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Overlay — Dashboard Builder" />
+  <Description DefaultValue="Design interactive dashboards directly on top of your workbook data." />
+  <IconUrl DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://REPLACE_WITH_YOUR_URL" />
+
+  <AppDomains>
+    <AppDomain>https://REPLACE_WITH_YOUR_URL</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Workbook" />
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://REPLACE_WITH_YOUR_URL/src/taskpane/taskpane.html" />
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title" />
+            <Description resid="GetStarted.Description" />
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl" />
+          </GetStarted>
+          <FunctionFile resid="Commands.Url" />
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Overlay.Group1">
+                <Label resid="Group1Label" />
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16x16" />
+                  <bt:Image size="32" resid="Icon.32x32" />
+                  <bt:Image size="80" resid="Icon.80x80" />
+                </Icon>
+                <Control xsi:type="Button" id="Overlay.TaskpaneButton">
+                  <Label resid="TaskpaneButton.Label" />
+                  <Supertip>
+                    <Title resid="TaskpaneButton.Label" />
+                    <Description resid="TaskpaneButton.Tooltip" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16x16" />
+                    <bt:Image size="32" resid="Icon.32x32" />
+                    <bt:Image size="80" resid="Icon.80x80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>Overlay.Taskpane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16x16" DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-32.png" />
+        <bt:Image id="Icon.32x32" DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-32.png" />
+        <bt:Image id="Icon.80x80" DefaultValue="https://REPLACE_WITH_YOUR_URL/assets/icon-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Commands.Url" DefaultValue="https://REPLACE_WITH_YOUR_URL/src/taskpane/taskpane.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://REPLACE_WITH_YOUR_URL/src/taskpane/taskpane.html" />
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://REPLACE_WITH_YOUR_URL" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GetStarted.Title" DefaultValue="Get started with Overlay!" />
+        <bt:String id="Group1Label" DefaultValue="Dashboard" />
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Overlay Builder" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="Open the Overlay panel to start designing a dashboard on top of this workbook." />
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open the Overlay dashboard builder panel." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
