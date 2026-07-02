@@ -7,309 +7,138 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script src="../shared/elements.js"></script>
 <style>
   :root{
-    --ink:#12181F;
-    --ink-soft:#1B232D;
-    --panel:#FFFFFF;
-    --line:#E4E7EB;
-    --line-soft:#EEF0F3;
-    --text:#1C232B;
-    --text-dim:#6B7480;
-    --text-faint:#9AA2AC;
-    --emerald:#1E7F5C;
-    --emerald-soft:#E4F3EC;
-    --amber:#E8A33D;
-    --amber-soft:#FCEFD9;
-    --danger:#D2534A;
-    --danger-soft:#FBEAE8;
+    --ink:#12181F; --ink-soft:#1B232D; --panel:#FFFFFF; --canvas:#F5F6F8;
+    --line:#E4E7EB; --line-soft:#EEF0F3; --text:#1C232B; --text-dim:#6B7480; --text-faint:#9AA2AC;
+    --emerald:#1E7F5C; --emerald-soft:#E4F3EC; --amber:#E8A33D; --amber-soft:#FCEFD9;
+    --shadow-lg: 0 20px 48px -12px rgba(18,24,31,0.28), 0 2px 8px rgba(18,24,31,0.08);
     --shadow-sm: 0 1px 2px rgba(18,24,31,0.06), 0 1px 1px rgba(18,24,31,0.04);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
-  body{
-    font-family:'Inter',sans-serif;
-    color:var(--text);
-    background:#fff;
-    -webkit-font-smoothing:antialiased;
-    font-size:13px;
-  }
-  #app{display:flex;flex-direction:column;min-height:100vh;}
+  body{font-family:'Inter',sans-serif;color:var(--text);background:var(--ink);overflow:hidden;font-size:13px;}
+  #app{display:flex;flex-direction:column;height:100vh;width:100vw;}
 
-  /* ---------- TOP BAR ---------- */
-  .topbar{
-    background:var(--ink);
-    padding:12px 14px;
-    flex-shrink:0;
-  }
-  .topbar-row1{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .topbar{height:52px;background:var(--ink);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.06);}
   .brand{display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;color:#fff;}
   .brand-mark{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg, var(--emerald), #14523D);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;}
-  .workbook-name{font-size:10.5px;color:rgba(255,255,255,0.4);font-family:'JetBrains Mono',monospace;margin-top:2px;}
-  .mode-toggle{display:flex;background:rgba(255,255,255,0.06);border-radius:999px;padding:3px;}
-  .mode-btn{border:none;background:transparent;color:rgba(255,255,255,0.55);font-size:11px;font-weight:600;padding:5px 14px;border-radius:999px;cursor:pointer;font-family:'Inter',sans-serif;}
-  .mode-btn.active{background:#fff;color:var(--ink);}
-  .mode-btn.active.test-active{background:var(--emerald);color:#fff;}
-  .test-note{font-size:10.5px;color:rgba(255,255,255,0.45);line-height:1.5;padding:6px 2px 0 2px;}
+  .workbook-name{font-size:10px;color:rgba(255,255,255,0.4);font-family:'JetBrains Mono',monospace;margin-top:1px;}
+  .publish-btn{background:var(--emerald);color:#fff;border:none;font-size:11.5px;font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px;}
+  .publish-btn:disabled{opacity:0.5;cursor:default;}
+  .publish-status{font-size:9.5px;color:rgba(255,255,255,0.45);margin-top:2px;font-family:'JetBrains Mono',monospace;}
 
-  /* ---------- SECTION LABELS ---------- */
-  .section{padding:14px 14px 6px 14px;}
-  .section-label{font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;}
+  .body-row{flex:1;display:flex;min-height:0;}
 
-  /* ---------- ELEMENT GRID ---------- */
-  .el-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 14px;}
-  .el-chip{
-    display:flex;flex-direction:column;align-items:center;gap:6px;
-    padding:10px 4px;border-radius:9px;
-    background:#FAFBFC;border:1px solid var(--line-soft);
-    cursor:pointer;transition:all .12s ease;
-  }
-  .el-chip:hover{background:var(--emerald-soft);border-color:var(--emerald);}
-  .el-chip:hover svg{color:var(--emerald);}
-  .el-chip svg{color:var(--text-dim);}
-  .el-chip-label{font-size:10px;font-weight:600;color:var(--text-dim);text-align:center;line-height:1.2;}
-  .el-chip.disabled{opacity:0.4;cursor:not-allowed;}
-  .el-chip.disabled:hover{background:#FAFBFC;border-color:var(--line-soft);}
-  .el-chip.disabled:hover svg{color:var(--text-dim);}
+  .rail{width:200px;background:var(--ink-soft);border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;display:flex;flex-direction:column;}
+  .rail-scroll{flex:1;overflow-y:auto;padding:10px 8px;}
+  .rail-scroll::-webkit-scrollbar{width:5px;}
+  .rail-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
+  .group-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.32);padding:10px 6px 6px 6px;}
+  .element-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+  .element-chip{display:flex;flex-direction:column;align-items:center;gap:6px;padding:9px 4px;border-radius:8px;background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.05);cursor:pointer;user-select:none;}
+  .element-chip:hover{background:rgba(30,127,92,0.16);border-color:rgba(30,127,92,0.4);}
+  .element-chip svg{color:rgba(255,255,255,0.75);}
+  .element-chip:hover svg{color:var(--emerald);}
+  .element-chip-label{font-size:9.5px;font-weight:600;color:rgba(255,255,255,0.75);text-align:center;line-height:1.2;}
 
-  .divider-full{height:1px;background:var(--line-soft);margin:12px 14px;}
+  .canvas-wrap{flex:1;position:relative;overflow:auto;background:var(--canvas);}
+  .canvas{position:relative;width:1600px;height:1100px;background-image:radial-gradient(circle, #DDE1E6 1px, transparent 1px);background-size:18px 18px;background-color:#fff;}
+  .empty-hint{position:absolute;top:40px;left:40px;max-width:260px;color:var(--text-faint);font-size:12px;line-height:1.6;pointer-events:none;}
 
-  /* ---------- ELEMENTS LIST ---------- */
-  .list-header{display:flex;align-items:center;justify-content:space-between;padding:0 14px 8px 14px;}
-  .list-title{font-size:10.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-faint);}
-  .list-count{font-size:10.5px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;}
-  .elements-list{padding:0 14px 14px 14px;display:flex;flex-direction:column;gap:6px;}
-  .empty-state{margin:0 14px 14px 14px;padding:20px 14px;border:1.5px dashed var(--line);border-radius:10px;text-align:center;color:var(--text-faint);font-size:11.5px;line-height:1.6;}
-  .element-card{
-    display:flex;align-items:center;gap:10px;
-    padding:9px 10px;border-radius:9px;
-    background:#fff;border:1px solid var(--line);
-    cursor:pointer;transition:border-color .12s ease;
-  }
-  .element-card:hover{border-color:var(--emerald);}
-  .element-card.active{border-color:var(--emerald);background:var(--emerald-soft);}
-  .card-icon{width:26px;height:26px;border-radius:6px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .card-body{flex:1;min-width:0;}
-  .card-name{font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .card-sub{font-size:10px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .card-check{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line);flex-shrink:0;display:none;}
-  .card-check.show{display:block;}
-  .card-check.checked{background:var(--emerald);border-color:var(--emerald);}
-  .card-del{width:20px;height:20px;border-radius:5px;border:none;background:transparent;color:var(--text-faint);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
-  .card-del:hover{background:var(--danger-soft);color:var(--danger);}
+  .dash-el{cursor:move;transition:box-shadow .12s ease;}
+  .dash-el.selected{box-shadow:0 0 0 2px var(--emerald), 0 0 0 5px var(--emerald-soft);}
+  .resize-handle{position:absolute;width:10px;height:10px;right:-5px;bottom:-5px;background:var(--emerald);border:2px solid #fff;border-radius:3px;cursor:nwse-resize;display:none;z-index:5;}
+  .dash-el.selected .resize-handle{display:block;}
 
-  .group-bar{
-    display:none;
-    margin:0 14px 14px 14px;padding:10px 12px;
-    background:var(--ink);border-radius:9px;
-    align-items:center;justify-content:space-between;
-  }
-  .group-bar.show{display:flex;}
-  .group-bar span{color:#fff;font-size:11px;}
-  .group-bar button{background:var(--emerald);color:#fff;border:none;font-size:11px;font-weight:600;padding:6px 12px;border-radius:6px;cursor:pointer;}
-  .group-bar button:disabled{opacity:0.4;cursor:not-allowed;}
-  .group-bar .cancel-group{background:transparent;color:rgba(255,255,255,0.6);margin-right:6px;}
-
-  /* ---------- EDITOR ---------- */
-  .editor{border-top:1px solid var(--line);background:#FAFBFC;}
-  .editor-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;}
-  .editor-back{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--text-dim);cursor:pointer;background:none;border:none;padding:0;}
-  .editor-title{font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:600;}
-  .editor-del{font-size:11px;color:var(--danger);cursor:pointer;background:none;border:none;font-weight:600;}
-  .tabs{display:flex;border-bottom:1px solid var(--line);background:#fff;}
-  .tab{flex:1;padding:9px 0;text-align:center;font-size:11px;font-weight:600;color:var(--text-faint);cursor:pointer;border-bottom:2px solid transparent;}
-  .tab.active{color:var(--emerald);border-bottom-color:var(--emerald);}
-  .tab-body{padding:14px;background:#fff;}
-  .field{margin-bottom:12px;}
+  .prop-panel{position:absolute;width:270px;background:var(--panel);border-radius:12px;box-shadow:var(--shadow-lg);border:1px solid var(--line);z-index:100;overflow:hidden;}
+  .prop-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink);cursor:grab;}
+  .prop-title{color:#fff;font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;}
+  .prop-close{width:18px;height:18px;border-radius:5px;background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.6);cursor:pointer;font-size:12px;}
+  .prop-tabs{display:flex;border-bottom:1px solid var(--line);background:#FAFBFC;}
+  .prop-tab{flex:1;padding:8px 0;text-align:center;font-size:10.5px;font-weight:600;color:var(--text-faint);cursor:pointer;border-bottom:2px solid transparent;}
+  .prop-tab.active{color:var(--emerald);border-bottom-color:var(--emerald);}
+  .prop-body{padding:12px;max-height:320px;overflow-y:auto;}
+  .field{margin-bottom:11px;}
   .field:last-child{margin-bottom:0;}
-  .field-label{font-size:10.5px;font-weight:600;color:var(--text-dim);margin-bottom:5px;}
-  .field-input{width:100%;padding:7px 9px;border-radius:7px;border:1px solid var(--line);font-size:12px;font-family:'Inter',sans-serif;background:#fff;}
+  .field-label{font-size:10px;font-weight:600;color:var(--text-dim);margin-bottom:5px;}
+  .field-input{width:100%;padding:7px 9px;border-radius:7px;border:1px solid var(--line);font-size:11.5px;background:#fff;}
   .field-input.mono{font-family:'JetBrains Mono',monospace;font-size:11px;}
   .field-input:focus{outline:none;border-color:var(--emerald);box-shadow:0 0 0 3px var(--emerald-soft);}
-  .field-row{display:flex;gap:8px;}
+  .field-row{display:flex;gap:7px;}
   .field-row .field{flex:1;}
   .swatch-row{display:flex;gap:6px;}
-  .swatch{width:22px;height:22px;border-radius:6px;border:2px solid transparent;cursor:pointer;}
+  .swatch{width:20px;height:20px;border-radius:6px;border:2px solid transparent;cursor:pointer;}
   .swatch.active{border-color:var(--ink);}
-  .btn{width:100%;padding:8px 0;border-radius:7px;border:none;font-size:11.5px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
-  .btn-primary{background:var(--emerald);color:#fff;}
-  .btn-dark{background:var(--ink);color:#fff;margin-bottom:8px;}
-  .hint{font-size:10.5px;color:var(--text-faint);line-height:1.5;margin-top:6px;}
-  .status-msg{font-size:10.5px;padding:8px 10px;border-radius:7px;margin-top:8px;line-height:1.5;}
-  .status-msg.err{background:var(--danger-soft);color:#A83A32;}
-  .status-msg.ok{background:var(--emerald-soft);color:var(--emerald);}
-
-  /* ---------- INPUT CONFIG FORM ---------- */
-  .config-form{border-top:1px solid var(--line);background:#FAFBFC;padding:14px;}
-  .config-title{font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:600;margin-bottom:2px;}
-  .config-sub{font-size:10.5px;color:var(--text-faint);margin-bottom:12px;line-height:1.5;}
-  .close-config{float:right;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;}
+  .divider{height:1px;background:var(--line-soft);margin:11px 0;}
+  .btn-del{width:100%;padding:7px 0;border-radius:7px;border:1px solid #F3C9C4;background:#FBEAE8;color:#A83A32;font-size:11px;font-weight:600;cursor:pointer;}
 </style>
 </head>
 <body>
 <div id="app">
-
   <div class="topbar">
-    <div class="topbar-row1">
-      <div>
-        <div class="brand"><div class="brand-mark">O</div>Overlay</div>
-        <div class="workbook-name" id="workbookName">Connecting…</div>
-      </div>
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="editModeBtn" onclick="setMode('edit')">Edit</button>
-        <button class="mode-btn" id="testModeBtn" onclick="setMode('test')">Test</button>
-      </div>
+    <div>
+      <div class="brand"><div class="brand-mark">O</div>Overlay</div>
+      <div class="workbook-name" id="workbookName">Connecting…</div>
     </div>
-    <div class="test-note" id="testNote" style="display:none;">Workflows aren't wired up yet — this switch will control click-actions once we build them. Elements you've placed still sit on the sheet either way.</div>
+    <div style="text-align:right;">
+      <button class="publish-btn" id="publishBtn" onclick="publishDashboard()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        Publish
+      </button>
+      <div class="publish-status" id="publishStatus">Not published yet</div>
+    </div>
   </div>
 
-  <div style="padding:14px;background:#FCEFD9;border-bottom:1px solid var(--line);">
-    <div style="font-size:11px;font-weight:700;margin-bottom:6px;">🧪 Bridge test (temporary)</div>
-    <button class="btn btn-dark" style="margin-bottom:6px;" onclick="bridgeWrite()">Write test value from task pane</button>
-    <button class="btn btn-primary" onclick="bridgeRead()">Read current value</button>
-    <div id="bridgeStatus" style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10.5px;background:#fff;padding:8px;border-radius:6px;white-space:pre-wrap;">Not checked yet.</div>
-  </div>
-
-  <div id="mainScroll">
-
-    <div class="section"><div class="section-label">Visual</div></div>
-    <div class="el-grid">
-      <div class="el-chip" onclick="addVisual('button')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/></svg>
-        <span class="el-chip-label">Button</span>
-      </div>
-      <div class="el-chip" onclick="addVisual('icon')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 11-13h-7l1-7z"/></svg>
-        <span class="el-chip-label">Icon</span>
-      </div>
-      <div class="el-chip" onclick="addVisual('image')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>
-        <span class="el-chip-label">Image</span>
-      </div>
-      <div class="el-chip" onclick="addVisual('text')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6h14M12 6v14"/></svg>
-        <span class="el-chip-label">Text</span>
-      </div>
-      <div class="el-chip" onclick="addVisual('shape')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 18H3z"/></svg>
-        <span class="el-chip-label">Shape</span>
-      </div>
-      <div class="el-chip" onclick="addVisual('graph')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M12 19V5M20 19v-7"/></svg>
-        <span class="el-chip-label">Graph</span>
+  <div class="body-row">
+    <div class="rail">
+      <div class="rail-scroll">
+        <div class="group-label" style="padding-top:0;">Visual</div>
+        <div class="element-grid">
+          <div class="element-chip" onclick="addElement('button')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/></svg><span class="element-chip-label">Button</span></div>
+          <div class="element-chip" onclick="addElement('icon')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><span class="element-chip-label">Icon</span></div>
+          <div class="element-chip" onclick="addElement('image')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg><span class="element-chip-label">Image</span></div>
+          <div class="element-chip" onclick="addElement('text')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6h14M12 6v14"/></svg><span class="element-chip-label">Text</span></div>
+          <div class="element-chip" onclick="addElement('shape')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 18H3z"/></svg><span class="element-chip-label">Shape</span></div>
+          <div class="element-chip" onclick="addElement('graph')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M12 19V5M20 19v-7"/></svg><span class="element-chip-label">Graph</span></div>
+        </div>
+        <div class="group-label">Containers</div>
+        <div class="element-grid">
+          <div class="element-chip" onclick="addElement('group')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="element-chip-label">Group</span></div>
+          <div class="element-chip" onclick="addElement('repeating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><rect x="3" y="10" width="18" height="4"/><rect x="3" y="16" width="18" height="4"/></svg><span class="element-chip-label">Repeating</span></div>
+          <div class="element-chip" onclick="addElement('popup')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/></svg><span class="element-chip-label">Popup</span></div>
+          <div class="element-chip" onclick="addElement('floating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="14" height="12" rx="2"/></svg><span class="element-chip-label">Floating</span></div>
+        </div>
+        <div class="group-label">Input forms</div>
+        <div class="element-grid">
+          <div class="element-chip" onclick="addElement('input')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Input</span></div>
+          <div class="element-chip" onclick="addElement('multiline')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/></svg><span class="element-chip-label">Multiline</span></div>
+          <div class="element-chip" onclick="addElement('dropdown')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/></svg><span class="element-chip-label">Dropdown</span></div>
+          <div class="element-chip" onclick="addElement('checkbox')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/></svg><span class="element-chip-label">Checkbox</span></div>
+          <div class="element-chip" onclick="addElement('slider')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="14" cy="12" r="3"/></svg><span class="element-chip-label">Slider</span></div>
+          <div class="element-chip" onclick="addElement('date')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/></svg><span class="element-chip-label">Date</span></div>
+          <div class="element-chip" onclick="addElement('upload')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Upload</span></div>
+        </div>
       </div>
     </div>
 
-    <div class="section"><div class="section-label">Containers</div></div>
-    <div class="el-grid">
-      <div class="el-chip" onclick="startGroupMode()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-        <span class="el-chip-label">Group</span>
-      </div>
-      <div class="el-chip disabled" title="No native Excel container object — deferred for now.">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><rect x="3" y="10" width="18" height="4"/><rect x="3" y="16" width="18" height="4"/></svg>
-        <span class="el-chip-label">Repeating</span>
-      </div>
-      <div class="el-chip disabled" title="No native Excel container object — deferred for now.">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>
-        <span class="el-chip-label">Popup</span>
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="canvas" id="canvas">
+        <div class="empty-hint" id="emptyHint">Click an element on the left to drop it here. Drag to move, corner-drag to resize, click to open its setup panel.</div>
       </div>
     </div>
-
-    <div class="section"><div class="section-label">Input forms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint);">— applies to a cell</span></div></div>
-    <div class="el-grid">
-      <div class="el-chip" onclick="openInputConfig('input')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/></svg>
-        <span class="el-chip-label">Input</span>
-      </div>
-      <div class="el-chip" onclick="openInputConfig('multiline')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M6 9h12M6 13h8"/></svg>
-        <span class="el-chip-label">Multiline</span>
-      </div>
-      <div class="el-chip" onclick="openInputConfig('dropdown')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/><path d="M16 12l2 2 2-2"/></svg>
-        <span class="el-chip-label">Dropdown</span>
-      </div>
-      <div class="el-chip" onclick="openInputConfig('checkbox')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
-        <span class="el-chip-label">Checkbox</span>
-      </div>
-      <div class="el-chip" onclick="openInputConfig('slider')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="14" cy="12" r="3"/></svg>
-        <span class="el-chip-label">Number range</span>
-      </div>
-      <div class="el-chip" onclick="openInputConfig('date')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
-        <span class="el-chip-label">Date</span>
-      </div>
-      <div class="el-chip" onclick="openInputConfig('upload')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/></svg>
-        <span class="el-chip-label">File link</span>
-      </div>
-    </div>
-
-    <div id="configFormWrap"></div>
-
-    <div class="divider-full"></div>
-
-    <div class="list-header">
-      <span class="list-title">Your elements</span>
-      <span class="list-count" id="listCount">0</span>
-    </div>
-    <div class="group-bar" id="groupBar">
-      <span id="groupBarText">Select 2+ elements to group</span>
-      <div>
-        <button class="cancel-group" onclick="cancelGroupMode()">Cancel</button>
-        <button id="groupConfirmBtn" disabled onclick="confirmGroup()">Group</button>
-      </div>
-    </div>
-    <div id="listWrap">
-      <div class="empty-state" id="emptyState">Tap an element above and it'll be placed directly on the sheet behind this panel — drag it around like any normal Excel object.</div>
-      <div class="elements-list" id="elementsList"></div>
-    </div>
-
-    <div id="editorWrap"></div>
-
   </div>
 </div>
 
-<input type="file" id="imageFileInput" accept="image/png, image/jpeg" style="display:none;">
-
 <script>
-let currentMode = 'edit';
-let elCount = 0;
-let elements = {};        // name -> {type, name, binding, kind: 'shape'|'chart'|'cell'}
-let selectedName = null;
-let groupModeOn = false;
-let groupSelection = new Set();
+let elements = {};      // id -> data object (matches OverlayElements schema)
+let selectedId = null;
+let zTop = 10;
+let panelEl = null;
 
-const TYPE_LABELS = {
-  button:'Button', icon:'Icon', image:'Image', text:'Text', shape:'Shape', graph:'Graph', group:'Group',
-  input:'Input cell', multiline:'Multiline cell', dropdown:'Dropdown cell', checkbox:'Checkbox cell',
-  slider:'Number range cell', date:'Date cell', upload:'File-link cell'
-};
-const TYPE_ICONS = {
-  button:'<rect x="3" y="8" width="18" height="8" rx="2"/>',
-  icon:'<path d="M13 2L3 14h7l-1 8 11-13h-7l1-7z"/>',
-  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/>',
-  text:'<path d="M5 6h14M12 6v14"/>',
-  shape:'<path d="M12 3l9 18H3z"/>',
-  graph:'<path d="M4 19V9M12 19V5M20 19v-7"/>',
-  group:'<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/>',
-  input:'<rect x="3" y="9" width="18" height="6" rx="1"/>',
-  multiline:'<rect x="3" y="5" width="18" height="14" rx="1"/>',
-  dropdown:'<rect x="3" y="8" width="18" height="8" rx="1"/>',
-  checkbox:'<rect x="4" y="4" width="16" height="16" rx="3"/>',
-  slider:'<circle cx="12" cy="12" r="9"/>',
-  date:'<rect x="3" y="5" width="18" height="16" rx="2"/>',
-  upload:'<path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/>'
-};
+const canvas = document.getElementById('canvas');
 
-function cardIcon(type){
-  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${TYPE_ICONS[type]||''}</svg>`;
-}
-
-// ---------------- Office.js bootstrap ----------------
 Office.onReady((info) => {
   const nameEl = document.getElementById('workbookName');
   if (info.host === Office.HostType.Excel) {
@@ -319,547 +148,256 @@ Office.onReady((info) => {
       await context.sync();
       nameEl.textContent = wb.name || 'Untitled workbook';
     }).catch((e)=>{ nameEl.textContent = 'Excel connected'; console.error(e); });
+    loadExistingDesign();
   } else {
     nameEl.textContent = 'Preview (not running in Excel)';
   }
 });
 
-function setMode(mode){
-  currentMode = mode;
-  document.getElementById('editModeBtn').classList.toggle('active', mode==='edit');
-  document.getElementById('testModeBtn').classList.toggle('active', mode==='test');
-  document.getElementById('testModeBtn').classList.toggle('test-active', mode==='test');
-  document.getElementById('testNote').style.display = mode==='test' ? 'block':'none';
+// ---------------- Add / render elements on canvas ----------------
+function addElement(type) {
+  const el = OverlayElements.makeElement(type, {
+    left: 40 + (Object.keys(elements).length * 24) % 500,
+    top: 30 + (Object.keys(elements).length * 30) % 350
+  });
+  elements[el.id] = el;
+  renderElement(el);
+  selectElement(el.id);
+  document.getElementById('emptyHint').style.display = 'none';
 }
 
-// ---------------- Visual elements -> real shapes/charts ----------------
-async function addVisual(type){
-  elCount++;
-  const name = `Overlay_${type}_${elCount}`;
-  try{
-    if(type==='image'){
-      document.getElementById('imageFileInput').dataset.pendingName = name;
-      document.getElementById('imageFileInput').click();
-      return;
+function renderElement(el) {
+  const node = OverlayElements.buildNode(el);
+  node.id = 'node_' + el.id;
+  node.style.zIndex = zTop++;
+
+  const handle = document.createElement('div');
+  handle.className = 'resize-handle';
+  node.appendChild(handle);
+  node.classList.add('dash-el');
+
+  canvas.appendChild(node);
+  makeDraggable(node, handle, el);
+  node.addEventListener('mousedown', () => selectElement(el.id));
+}
+
+function redrawElement(el) {
+  const old = document.getElementById('node_' + el.id);
+  if (old) old.remove();
+  renderElement(el);
+  if (selectedId === el.id) {
+    document.getElementById('node_' + el.id).classList.add('selected');
+  }
+}
+
+function makeDraggable(node, handle, el) {
+  let dragging=false, resizing=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0;
+  node.addEventListener('mousedown', (e)=>{
+    if (e.target === handle) {
+      resizing = true; sx=e.clientX; sy=e.clientY; ow=el.width; oh=el.height;
+      e.stopPropagation(); e.preventDefault(); return;
     }
-    await Excel.run(async (context) => {
-      const sheet = context.workbook.worksheets.getActiveWorksheet();
-      let shape;
-      if(type==='button'){
-        shape = sheet.shapes.addGeometricShape(Excel.GeometricShapeType.roundedRectangle);
-        shape.left = 60; shape.top = 60; shape.width = 120; shape.height = 40;
-        shape.fill.setSolidColor('#1E7F5C');
-        shape.textFrame.textRange.text = 'Refresh view';
-        shape.textFrame.textRange.font.color = '#FFFFFF';
-        shape.textFrame.textRange.font.bold = true;
-      } else if(type==='icon'){
-        shape = sheet.shapes.addGeometricShape(Excel.GeometricShapeType.oval);
-        shape.left = 60; shape.top = 60; shape.width = 40; shape.height = 40;
-        shape.fill.setSolidColor('#FFFFFF');
-        shape.lineFormat.color = '#12181F';
-        shape.lineFormat.weight = 1.5;
-        shape.textFrame.textRange.text = '⚡';
-        shape.textFrame.textRange.font.size = 18;
-        shape.textFrame.textRange.font.color = '#12181F';
-        shape.textFrame.horizontalAlignment = Excel.ShapeTextHorizontalAlignment.center;
-        shape.textFrame.verticalAlignment = Excel.ShapeTextVerticalAlignment.middle;
-      } else if(type==='text'){
-        shape = sheet.shapes.addTextBox('Double-click to edit directly on the sheet');
-        shape.left = 60; shape.top = 60; shape.width = 200; shape.height = 26;
-        shape.textFrame.textRange.font.size = 13;
-      } else if(type==='shape'){
-        shape = sheet.shapes.addGeometricShape(Excel.GeometricShapeType.rectangle);
-        shape.left = 60; shape.top = 60; shape.width = 90; shape.height = 90;
-        shape.fill.setSolidColor('#E8A33D');
-      } else if(type==='graph'){
-        const sel = context.workbook.getSelectedRange();
-        sel.load('address,rowCount,columnCount');
-        await context.sync();
-        let range = sel;
-        if(sel.rowCount < 2 && sel.columnCount < 2){
-          // no real range selected — fall back to a small starter range so it doesn't error
-          range = sheet.getRange('A1:B1');
-        }
-        const chart = sheet.charts.add(Excel.ChartType.columnClustered, range, Excel.ChartSeriesBy.auto);
-        chart.name = name;
-        chart.top = 60; chart.left = 60; chart.width = 280; chart.height = 180;
-        await context.sync();
-        elements[name] = {type, name, binding: range.address, kind:'chart'};
-        refreshList();
-        selectElementFromList(name);
-        return;
-      }
-      shape.name = name;
-      try{ shape.onActivated.add((args)=>{ selectElementFromList(name); }); } catch(e){ /* not fatal */ }
-      await context.sync();
-      elements[name] = {type, name, binding:null, kind:'shape'};
-      refreshList();
-      selectElementFromList(name);
-    });
-  } catch(err){
-    console.error(err);
-    showGlobalError('Could not place that on the sheet: ' + (err.message||err));
-  }
-}
-
-document.getElementById('imageFileInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0];
-  const name = e.target.dataset.pendingName;
-  if(!file || !name) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    try{
-      const startIndex = reader.result.toString().indexOf('base64,');
-      const b64 = reader.result.toString().substring(startIndex+7);
-      await Excel.run(async (context)=>{
-        const sheet = context.workbook.worksheets.getActiveWorksheet();
-        const shape = sheet.shapes.addImage(b64);
-        shape.name = name;
-        shape.left = 60; shape.top = 60;
-        try{ shape.onActivated.add(()=>{ selectElementFromList(name); }); } catch(err){}
-        await context.sync();
-        elements[name] = {type:'image', name, binding:null, kind:'shape'};
-        refreshList();
-        selectElementFromList(name);
-      });
-    } catch(err){
-      console.error(err);
-      showGlobalError('Could not insert image: ' + (err.message||err));
+    dragging = true; sx=e.clientX; sy=e.clientY; ox=el.left; oy=el.top;
+    node.style.zIndex = zTop++;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e)=>{
+    if (dragging) {
+      el.left = ox + (e.clientX - sx);
+      el.top = oy + (e.clientY - sy);
+      node.style.left = el.left + 'px';
+      node.style.top = el.top + 'px';
+      if (selectedId === el.id) positionPanel(node);
+    } else if (resizing) {
+      el.width = Math.max(24, ow + (e.clientX - sx));
+      el.height = Math.max(20, oh + (e.clientY - sy));
+      node.style.width = el.width + 'px';
+      node.style.height = el.height + 'px';
+      if (selectedId === el.id) positionPanel(node);
     }
-  };
-  reader.readAsDataURL(file);
-  e.target.value = '';
-});
+  });
+  document.addEventListener('mouseup', ()=>{ dragging=false; resizing=false; });
+}
 
-// ---------------- Input forms -> real cell mechanics ----------------
-function openInputConfig(type){
-  const wrap = document.getElementById('configFormWrap');
-  const fieldsByType = {
-    input: `<div class="field"><div class="field-label">Placeholder note (optional)</div><input class="field-input" id="cfg_placeholder" placeholder="e.g. Enter region name"></div>`,
-    multiline: `<div class="field"><div class="field-label">Placeholder note (optional)</div><input class="field-input" id="cfg_placeholder" placeholder="e.g. Notes for this cell"></div>`,
-    dropdown: `<div class="field"><div class="field-label">Options (comma separated)</div><input class="field-input" id="cfg_options" placeholder="North, South, East, West"></div>`,
-    checkbox: `<div class="hint" style="margin-top:0;">Applies a TRUE/FALSE dropdown to the cell — Excel doesn't expose native checkbox insertion through this API yet, so this is the reliable equivalent.</div>`,
-    slider: `<div class="field-row"><div class="field"><div class="field-label">Min</div><input class="field-input" id="cfg_min" type="number" value="0"></div><div class="field"><div class="field-label">Max</div><input class="field-input" id="cfg_max" type="number" value="100"></div></div>`,
-    date: `<div class="field-row"><div class="field"><div class="field-label">Earliest date</div><input class="field-input" id="cfg_dmin" type="date"></div><div class="field"><div class="field-label">Latest date</div><input class="field-input" id="cfg_dmax" type="date"></div></div>`,
-    upload: `<div class="field"><div class="field-label">Link target (URL or file path)</div><input class="field-input mono" id="cfg_link" placeholder="https://... or \\\\server\\file.pdf"></div><div class="hint" style="margin-top:0;">Excel has no floating file-upload widget — this attaches a real hyperlink to the cell instead.</div>`
-  };
-  wrap.innerHTML = `
-    <div class="config-form">
-      <button class="close-config" onclick="closeInputConfig()">✕</button>
-      <div class="config-title">${TYPE_LABELS[type]}</div>
-      <div class="config-sub">Select the target cell on the sheet, then click "Use current selection."</div>
-      <div class="field">
-        <div class="field-label">Target cell</div>
-        <div style="display:flex;gap:6px;">
-          <input class="field-input mono" id="cfg_cell" placeholder="e.g. Sheet1!B3" style="flex:1;">
-        </div>
-      </div>
-      <button class="btn btn-dark" onclick="useSelectionForConfig()">Use current selection</button>
-      ${fieldsByType[type]}
-      <button class="btn btn-primary" style="margin-top:12px;" onclick="applyInputConfig('${type}')">Apply to cell</button>
-      <div id="cfgStatus"></div>
+// ---------------- Selection + property panel ----------------
+function selectElement(id) {
+  document.querySelectorAll('.dash-el').forEach(n => n.classList.remove('selected'));
+  selectedId = id;
+  const node = document.getElementById('node_' + id);
+  if (node) node.classList.add('selected');
+  openPropPanel(id);
+}
+
+function positionPanel(node) {
+  if (!panelEl) return;
+  const wrap = document.getElementById('canvasWrap');
+  let left = node.offsetLeft + node.offsetWidth + 20 - wrap.scrollLeft;
+  let top = node.offsetTop - wrap.scrollTop;
+  if (left > wrap.clientWidth - 290) left = node.offsetLeft - 290 - wrap.scrollLeft;
+  panelEl.style.left = Math.max(6,left) + 'px';
+  panelEl.style.top = Math.max(6,top) + 'px';
+}
+
+function openPropPanel(id) {
+  if (panelEl) panelEl.remove();
+  const el = elements[id];
+  const panel = document.createElement('div');
+  panel.className = 'prop-panel';
+  panel.innerHTML = `
+    <div class="prop-header" id="propDrag">
+      <span class="prop-title">${OverlayElements.TYPE_LABELS[el.type]}</span>
+      <button class="prop-close" onclick="closePanel()">✕</button>
     </div>
-  `;
-}
-function closeInputConfig(){ document.getElementById('configFormWrap').innerHTML=''; }
-
-async function useSelectionForConfig(){
-  try{
-    await Excel.run(async (context)=>{
-      const range = context.workbook.getSelectedRange();
-      range.load('address');
-      await context.sync();
-      document.getElementById('cfg_cell').value = range.address;
-    });
-  } catch(err){ console.error(err); }
-}
-
-async function applyInputConfig(type){
-  const cellAddr = document.getElementById('cfg_cell').value.trim();
-  const statusEl = document.getElementById('cfgStatus');
-  if(!cellAddr){
-    statusEl.innerHTML = `<div class="status-msg err">Pick a target cell first.</div>`;
-    return;
-  }
-  try{
-    await Excel.run(async (context)=>{
-      const parts = cellAddr.split('!');
-      const sheetName = parts.length>1 ? parts[0] : null;
-      const addr = parts.length>1 ? parts[1] : parts[0];
-      const sheet = sheetName ? context.workbook.worksheets.getItem(sheetName) : context.workbook.worksheets.getActiveWorksheet();
-      const range = sheet.getRange(addr);
-
-      if(type==='input' || type==='multiline'){
-        range.format.fill.color = '#FFFFFF';
-        range.format.borders.getItem('EdgeTop').style = 'Continuous';
-        range.format.borders.getItem('EdgeBottom').style = 'Continuous';
-        range.format.borders.getItem('EdgeLeft').style = 'Continuous';
-        range.format.borders.getItem('EdgeRight').style = 'Continuous';
-        if(type==='multiline'){ range.format.wrapText = true; range.format.rowHeight = 60; }
-        const note = document.getElementById('cfg_placeholder').value;
-        if(note){ range.dataValidation.prompt = { showPrompt:true, message: note, title:'Input' }; }
-      } else if(type==='dropdown'){
-        const opts = document.getElementById('cfg_options').value.trim();
-        if(!opts) throw new Error('Add at least one option.');
-        range.dataValidation.rule = { list: { inCellDropDown:true, source: opts } };
-      } else if(type==='checkbox'){
-        range.dataValidation.rule = { list: { inCellDropDown:true, source:'TRUE,FALSE' } };
-      } else if(type==='slider'){
-        const min = parseFloat(document.getElementById('cfg_min').value);
-        const max = parseFloat(document.getElementById('cfg_max').value);
-        range.dataValidation.rule = { wholeNumber: { formula1:min, formula2:max, operator: Excel.DataValidationOperator.between } };
-      } else if(type==='date'){
-        const dmin = document.getElementById('cfg_dmin').value;
-        const dmax = document.getElementById('cfg_dmax').value;
-        if(dmin && dmax){
-          range.dataValidation.rule = { date: { formula1:new Date(dmin), formula2:new Date(dmax), operator: Excel.DataValidationOperator.between } };
-        }
-        range.numberFormat = [['m/d/yyyy']];
-      } else if(type==='upload'){
-        const link = document.getElementById('cfg_link').value.trim();
-        if(!link) throw new Error('Add a link target.');
-        range.hyperlink = { address: link, textToDisplay: range.address };
-      }
-      await context.sync();
-
-      elCount++;
-      const name = `Overlay_${type}_${elCount}`;
-      elements[name] = {type, name, binding: cellAddr, kind:'cell'};
-      refreshList();
-      statusEl.innerHTML = `<div class="status-msg ok">Applied to ${cellAddr}.</div>`;
-      refreshList();
-    });
-  } catch(err){
-    console.error(err);
-    statusEl.innerHTML = `<div class="status-msg err">${err.message||err}</div>`;
-  }
-}
-
-// ---------------- Elements list ----------------
-function refreshList(){
-  const listEl = document.getElementById('elementsList');
-  const empty = document.getElementById('emptyState');
-  const keys = Object.keys(elements);
-  document.getElementById('listCount').textContent = keys.length;
-  empty.style.display = keys.length ? 'none' : 'block';
-  listEl.innerHTML = keys.map(name=>{
-    const el = elements[name];
-    const checked = groupSelection.has(name);
-    return `
-      <div class="element-card ${selectedName===name?'active':''}" onclick="cardClick('${name}')">
-        <div class="card-check ${groupModeOn && el.kind==='shape' ? 'show':''} ${checked?'checked':''}" onclick="event.stopPropagation(); toggleGroupSelect('${name}')"></div>
-        <div class="card-icon">${cardIcon(el.type)}</div>
-        <div class="card-body">
-          <div class="card-name">${TYPE_LABELS[el.type]}</div>
-          <div class="card-sub">${el.binding || name}</div>
-        </div>
-        <button class="card-del" onclick="event.stopPropagation(); deleteElement('${name}')" title="Remove">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>`;
-  }).join('');
-}
-
-function cardClick(name){
-  if(groupModeOn){ toggleGroupSelect(name); return; }
-  selectElementFromList(name);
-}
-
-async function deleteElement(name){
-  const el = elements[name];
-  try{
-    await Excel.run(async (context)=>{
-      const sheet = context.workbook.worksheets.getActiveWorksheet();
-      if(el.kind==='chart'){
-        sheet.charts.getItem(name).delete();
-      } else if(el.kind==='shape'){
-        sheet.shapes.getItem(name).delete();
-      }
-      await context.sync();
-    });
-  } catch(err){ console.error(err); /* cell-based ones have nothing to delete from the sheet object model side */ }
-  delete elements[name];
-  if(selectedName===name){ selectedName=null; document.getElementById('editorWrap').innerHTML=''; }
-  refreshList();
-}
-
-// ---------------- Group mode ----------------
-function startGroupMode(){
-  groupModeOn = true;
-  groupSelection.clear();
-  document.getElementById('groupBar').classList.add('show');
-  document.getElementById('groupBarText').textContent = 'Select 2+ elements to group';
-  document.getElementById('groupConfirmBtn').disabled = true;
-  refreshList();
-}
-function cancelGroupMode(){
-  groupModeOn = false;
-  groupSelection.clear();
-  document.getElementById('groupBar').classList.remove('show');
-  refreshList();
-}
-function toggleGroupSelect(name){
-  if(elements[name].kind!=='shape') return;
-  if(groupSelection.has(name)) groupSelection.delete(name); else groupSelection.add(name);
-  document.getElementById('groupBarText').textContent = groupSelection.size + ' selected';
-  document.getElementById('groupConfirmBtn').disabled = groupSelection.size < 2;
-  refreshList();
-}
-async function confirmGroup(){
-  const names = Array.from(groupSelection);
-  try{
-    await Excel.run(async (context)=>{
-      const sheet = context.workbook.worksheets.getActiveWorksheet();
-      const shapeRefs = names.map(n => sheet.shapes.getItem(n));
-      const group = sheet.shapes.addGroup(shapeRefs);
-      elCount++;
-      const groupName = `Overlay_group_${elCount}`;
-      group.name = groupName;
-      await context.sync();
-      names.forEach(n => delete elements[n]);
-      elements[groupName] = {type:'group', name:groupName, binding:null, kind:'shape'};
-      cancelGroupMode();
-      refreshList();
-    });
-  } catch(err){
-    console.error(err);
-    showGlobalError('Could not group those elements: ' + (err.message||err));
-    cancelGroupMode();
-  }
-}
-
-// ---------------- Editor ----------------
-function selectElementFromList(name){
-  selectedName = name;
-  refreshList();
-  renderEditor(name);
-}
-
-function renderEditor(name){
-  const el = elements[name];
-  const wrap = document.getElementById('editorWrap');
-  wrap.innerHTML = `
-    <div class="editor">
-      <div class="editor-header">
-        <button class="editor-back" onclick="closeEditor()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-          Back
-        </button>
-        <span class="editor-title">${TYPE_LABELS[el.type]}</span>
-        <button class="editor-del" onclick="deleteElement('${name}')">Delete</button>
-      </div>
-      <div class="tabs" id="editorTabs">
-        <div class="tab active" data-tab="appearance">Appearance</div>
-        <div class="tab" data-tab="data">Data</div>
-        <div class="tab" data-tab="layout">Layout</div>
-      </div>
-      <div class="tab-body" id="editorTabBody"></div>
+    <div class="prop-tabs">
+      <div class="prop-tab active" data-tab="appearance">Appearance</div>
+      <div class="prop-tab" data-tab="data">Data</div>
+      <div class="prop-tab" data-tab="layout">Layout</div>
     </div>
+    <div class="prop-body" id="propBody"></div>
   `;
-  document.querySelectorAll('#editorTabs .tab').forEach(t=>{
+  canvas.appendChild(panel);
+  panelEl = panel;
+  positionPanel(document.getElementById('node_' + id));
+  renderTab('appearance', id);
+
+  panel.querySelectorAll('.prop-tab').forEach(t=>{
     t.addEventListener('click', ()=>{
-      document.querySelectorAll('#editorTabs .tab').forEach(x=>x.classList.remove('active'));
+      panel.querySelectorAll('.prop-tab').forEach(x=>x.classList.remove('active'));
       t.classList.add('active');
-      renderTab(t.dataset.tab, name);
+      renderTab(t.dataset.tab, id);
     });
   });
-  renderTab('appearance', name);
-}
-function closeEditor(){
-  selectedName=null;
-  document.getElementById('editorWrap').innerHTML='';
-  refreshList();
-}
 
-function renderTab(tab, name){
-  const el = elements[name];
-  const body = document.getElementById('editorTabBody');
-  if(tab==='appearance'){
-    const showText = ['button','text','shape'].includes(el.type);
+  const dh = document.getElementById('propDrag');
+  let dragging=false, sx=0, sy=0, ox=0, oy=0;
+  dh.addEventListener('mousedown', (e)=>{ dragging=true; sx=e.clientX; sy=e.clientY; ox=panel.offsetLeft; oy=panel.offsetTop; e.preventDefault(); });
+  document.addEventListener('mousemove', (e)=>{ if(dragging){ panel.style.left=(ox+(e.clientX-sx))+'px'; panel.style.top=(oy+(e.clientY-sy))+'px'; } });
+  document.addEventListener('mouseup', ()=>dragging=false);
+}
+function closePanel(){ if(panelEl) panelEl.remove(); panelEl=null; document.querySelectorAll('.dash-el').forEach(n=>n.classList.remove('selected')); selectedId=null; }
+
+function renderTab(tab, id) {
+  const el = elements[id];
+  const body = document.getElementById('propBody');
+  if (tab === 'appearance') {
+    const showText = ['button','text','shape','group','repeating','popup','floating','input','multiline','dropdown','date','upload','graph'].includes(el.type);
     body.innerHTML = `
-      ${showText ? `<div class="field"><div class="field-label">Label / text</div><input class="field-input" id="ed_label" placeholder="Type and click Apply"></div>` : ''}
+      ${showText ? `<div class="field"><div class="field-label">Label / text</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)"></div>` : ''}
       <div class="field">
         <div class="field-label">Fill color</div>
         <div class="swatch-row">
-          <div class="swatch" style="background:#1E7F5C" onclick="setFill('${name}','#1E7F5C',this)"></div>
-          <div class="swatch" style="background:#12181F" onclick="setFill('${name}','#12181F',this)"></div>
-          <div class="swatch" style="background:#E8A33D" onclick="setFill('${name}','#E8A33D',this)"></div>
-          <div class="swatch" style="background:#D2534A" onclick="setFill('${name}','#D2534A',this)"></div>
-          <div class="swatch" style="background:#FFFFFF;border:1px solid var(--line)" onclick="setFill('${name}','#FFFFFF',this)"></div>
+          <div class="swatch" style="background:#1E7F5C" onclick="setFill('${id}','#1E7F5C',this)"></div>
+          <div class="swatch" style="background:#12181F" onclick="setFill('${id}','#12181F',this)"></div>
+          <div class="swatch" style="background:#E8A33D" onclick="setFill('${id}','#E8A33D',this)"></div>
+          <div class="swatch" style="background:#D2534A" onclick="setFill('${id}','#D2534A',this)"></div>
+          <div class="swatch" style="background:#FFFFFF;border:1px solid var(--line)" onclick="setFill('${id}','#FFFFFF',this)"></div>
         </div>
       </div>
-      ${showText ? `<button class="btn btn-primary" onclick="applyLabel('${name}')">Apply text</button>` : ''}
-      <div id="edStatus"></div>
+      <div class="divider"></div>
+      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
     `;
-  } else if(tab==='data'){
-    if(el.type==='graph'){
-      body.innerHTML = `
-        <div class="field">
-          <div class="field-label">Bound range</div>
-          <input class="field-input mono" id="ed_binding" value="${el.binding||''}" placeholder="Sheet1!B2:E10">
-        </div>
-        <button class="btn btn-dark" onclick="useSelectionForChart('${name}')">Use current selection</button>
-        <button class="btn btn-primary" onclick="rebindChart('${name}')">Update chart source</button>
-        <div id="edStatus"></div>
-      `;
-    } else {
-      body.innerHTML = `<div class="hint" style="margin-top:0;">Only Graph elements bind to a cell range. This element type doesn't read live data.</div>`;
-    }
-  } else if(tab==='layout'){
+  } else if (tab === 'data') {
+    body.innerHTML = `
+      <div class="field">
+        <div class="field-label">Cell range binding <span style="color:var(--text-faint);font-weight:400;">optional</span></div>
+        <input class="field-input mono" value="${el.binding||''}" placeholder="e.g. Sheet1!B2:E10" oninput="updateBinding('${id}', this.value)">
+      </div>
+      <div class="hint" style="font-size:10px;color:var(--text-faint);margin-top:6px;line-height:1.5;">Live data pulled from this range isn't wired up yet — this just records which range the element is meant to represent.</div>
+    `;
+  } else if (tab === 'layout') {
     body.innerHTML = `
       <div class="field-row">
-        <div class="field"><div class="field-label">X (left)</div><input class="field-input mono" id="ed_left" placeholder="px"></div>
-        <div class="field"><div class="field-label">Y (top)</div><input class="field-input mono" id="ed_top" placeholder="px"></div>
+        <div class="field"><div class="field-label">X</div><input class="field-input mono" value="${el.left}" oninput="setPos('${id}','left',this.value)"></div>
+        <div class="field"><div class="field-label">Y</div><input class="field-input mono" value="${el.top}" oninput="setPos('${id}','top',this.value)"></div>
       </div>
       <div class="field-row">
-        <div class="field"><div class="field-label">Width</div><input class="field-input mono" id="ed_width" placeholder="px"></div>
-        <div class="field"><div class="field-label">Height</div><input class="field-input mono" id="ed_height" placeholder="px"></div>
+        <div class="field"><div class="field-label">Width</div><input class="field-input mono" value="${el.width}" oninput="setPos('${id}','width',this.value)"></div>
+        <div class="field"><div class="field-label">Height</div><input class="field-input mono" value="${el.height}" oninput="setPos('${id}','height',this.value)"></div>
       </div>
-      <button class="btn btn-primary" onclick="applyLayout('${name}')">Apply position</button>
-      <div class="hint">Leave a field blank to keep its current value. You can also just drag the element directly on the sheet.</div>
-      <div id="edStatus"></div>
     `;
   }
 }
 
-async function setFill(name, color, node){
+function updateLabel(id, v){ elements[id].label = v; redrawElement(elements[id]); }
+function updateBinding(id, v){ elements[id].binding = v; }
+function setFill(id, color, node){
   document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
   node.classList.add('active');
-  const el = elements[name];
-  try{
-    await Excel.run(async (context)=>{
-      const sheet = context.workbook.worksheets.getActiveWorksheet();
-      const shape = sheet.shapes.getItem(name);
-      shape.fill.setSolidColor(color);
-      await context.sync();
-    });
-  } catch(err){ console.error(err); document.getElementById('edStatus').innerHTML = `<div class="status-msg err">${err.message||err}</div>`; }
+  elements[id].fill = color;
+  redrawElement(elements[id]);
+}
+function setPos(id, prop, v){
+  elements[id][prop] = parseFloat(v) || 0;
+  redrawElement(elements[id]);
+}
+function deleteElement(id){
+  const node = document.getElementById('node_' + id);
+  if (node) node.remove();
+  delete elements[id];
+  closePanel();
+  if (Object.keys(elements).length === 0) document.getElementById('emptyHint').style.display='block';
 }
 
-async function applyLabel(name){
-  const val = document.getElementById('ed_label').value;
-  const statusEl = document.getElementById('edStatus');
-  try{
-    await Excel.run(async (context)=>{
-      const sheet = context.workbook.worksheets.getActiveWorksheet();
-      const shape = sheet.shapes.getItem(name);
-      shape.textFrame.textRange.text = val;
-      await context.sync();
-    });
-    statusEl.innerHTML = `<div class="status-msg ok">Updated.</div>`;
-  } catch(err){
-    console.error(err);
-    statusEl.innerHTML = `<div class="status-msg err">${err.message||err}</div>`;
-  }
-}
+document.getElementById('canvas').addEventListener('mousedown', (e)=>{
+  if (e.target.id === 'canvas') closePanel();
+});
 
-async function useSelectionForChart(name){
+// ---------------- Publish (write to hidden sheet) ----------------
+async function publishDashboard(){
+  const btn = document.getElementById('publishBtn');
+  const statusEl = document.getElementById('publishStatus');
+  btn.disabled = true;
+  statusEl.textContent = 'Publishing…';
   try{
-    await Excel.run(async (context)=>{
-      const range = context.workbook.getSelectedRange();
-      range.load('address');
-      await context.sync();
-      document.getElementById('ed_binding').value = range.address;
-    });
-  } catch(err){ console.error(err); }
-}
-async function rebindChart(name){
-  const addr = document.getElementById('ed_binding').value.trim();
-  const statusEl = document.getElementById('edStatus');
-  if(!addr){ statusEl.innerHTML = `<div class="status-msg err">Enter or pick a range first.</div>`; return; }
-  try{
-    await Excel.run(async (context)=>{
-      const parts = addr.split('!');
-      const sheetName = parts.length>1 ? parts[0] : null;
-      const rangeAddr = parts.length>1 ? parts[1] : parts[0];
-      const sheet = sheetName ? context.workbook.worksheets.getItem(sheetName) : context.workbook.worksheets.getActiveWorksheet();
-      const range = sheet.getRange(rangeAddr);
-      const chart = sheet.charts.getItem(name);
-      chart.setData(range, Excel.ChartSeriesBy.auto);
-      await context.sync();
-    });
-    elements[name].binding = addr;
-    refreshList();
-    statusEl.innerHTML = `<div class="status-msg ok">Chart source updated.</div>`;
-  } catch(err){
-    console.error(err);
-    statusEl.innerHTML = `<div class="status-msg err">${err.message||err}</div>`;
-  }
-}
-
-async function applyLayout(name){
-  const el = elements[name];
-  const l = document.getElementById('ed_left').value;
-  const t = document.getElementById('ed_top').value;
-  const w = document.getElementById('ed_width').value;
-  const h = document.getElementById('ed_height').value;
-  const statusEl = document.getElementById('edStatus');
-  try{
-    await Excel.run(async (context)=>{
-      const sheet = context.workbook.worksheets.getActiveWorksheet();
-      const obj = el.kind==='chart' ? sheet.charts.getItem(name) : sheet.shapes.getItem(name);
-      if(l!=='') obj.left = parseFloat(l);
-      if(t!=='') obj.top = parseFloat(t);
-      if(w!=='') obj.width = parseFloat(w);
-      if(h!=='') obj.height = parseFloat(h);
-      await context.sync();
-    });
-    statusEl.innerHTML = `<div class="status-msg ok">Position updated.</div>`;
-  } catch(err){
-    console.error(err);
-    statusEl.innerHTML = `<div class="status-msg err">${err.message||err}</div>`;
-  }
-}
-
-function showGlobalError(msg){
-  const wrap = document.getElementById('configFormWrap');
-  wrap.innerHTML = `<div class="config-form"><div class="status-msg err">${msg}</div></div>`;
-}
-
-// ---------------- Bridge test (hidden sheet, not add-in Settings) ----------------
-async function bridgeWrite(){
-  const statusEl = document.getElementById('bridgeStatus');
-  try{
+    const payload = JSON.stringify(Object.values(elements));
     await Excel.run(async (context)=>{
       const sheets = context.workbook.worksheets;
       sheets.load('items/name');
       await context.sync();
-      let hidden = sheets.items.find(s => s.name === '_OverlayData');
       let sheet;
-      if(!hidden){
+      const existing = sheets.items.find(s => s.name === '_OverlayData');
+      if (!existing) {
         sheet = sheets.add('_OverlayData');
         sheet.visibility = Excel.SheetVisibility.veryHidden;
       } else {
         sheet = sheets.getItem('_OverlayData');
       }
-      const cell = sheet.getRange('A1');
-      cell.values = [['Written from TASK PANE at ' + new Date().toLocaleTimeString()]];
+      sheet.getRange('A1').values = [[payload]];
       await context.sync();
     });
-    statusEl.textContent = 'Saved to hidden sheet. Now check the content add-in.';
+    statusEl.textContent = 'Published at ' + new Date().toLocaleTimeString();
   } catch(err){
     console.error(err);
-    statusEl.textContent = 'Write failed: ' + (err.message||err);
+    statusEl.textContent = 'Publish failed: ' + (err.message || err);
+  } finally {
+    btn.disabled = false;
   }
 }
-async function bridgeRead(){
-  const statusEl = document.getElementById('bridgeStatus');
+
+async function loadExistingDesign(){
   try{
     await Excel.run(async (context)=>{
       const sheets = context.workbook.worksheets;
       sheets.load('items/name');
       await context.sync();
-      const hidden = sheets.items.find(s => s.name === '_OverlayData');
-      if(!hidden){ statusEl.textContent = 'No hidden sheet exists yet.'; return; }
+      const existing = sheets.items.find(s => s.name === '_OverlayData');
+      if (!existing) return;
       const sheet = sheets.getItem('_OverlayData');
       const cell = sheet.getRange('A1');
       cell.load('values');
       await context.sync();
-      statusEl.textContent = 'Found value:\n' + cell.values[0][0];
+      const raw = cell.values[0][0];
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      arr.forEach(el => {
+        elements[el.id] = el;
+        renderElement(el);
+      });
+      if (arr.length) document.getElementById('emptyHint').style.display = 'none';
+      document.getElementById('publishStatus').textContent = 'Loaded last published design';
     });
   } catch(err){
-    console.error(err);
-    statusEl.textContent = 'Read failed: ' + (err.message||err);
+    console.error('No existing design to load, or failed to parse:', err);
   }
 }
 </script>
