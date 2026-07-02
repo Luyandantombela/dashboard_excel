@@ -73,6 +73,19 @@
   .swatch.active{border-color:var(--ink);}
   .divider{height:1px;background:var(--line-soft);margin:11px 0;}
   .btn-del{width:100%;padding:7px 0;border-radius:7px;border:1px solid #F3C9C4;background:#FBEAE8;color:#A83A32;font-size:11px;font-weight:600;cursor:pointer;}
+
+  .icon-btn-sm{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.65);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .icon-btn-sm:disabled{opacity:0.3;cursor:default;}
+  .icon-btn-sm:not(:disabled):hover{background:rgba(255,255,255,0.1);}
+
+  .guide-v{position:absolute;top:0;bottom:0;width:1px;background:var(--emerald);display:none;z-index:200;pointer-events:none;}
+  .guide-h{position:absolute;left:0;right:0;height:1px;background:var(--emerald);display:none;z-index:200;pointer-events:none;}
+
+  .ctx-menu{position:fixed;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-lg);z-index:1000;overflow:hidden;min-width:140px;font-size:11.5px;}
+  .ctx-item{padding:9px 12px;cursor:pointer;}
+  .ctx-item:hover{background:var(--emerald-soft);}
+  .ctx-item.danger{color:#A83A32;}
+  .ctx-item.danger:hover{background:#FBEAE8;}
 </style>
 </head>
 <body>
@@ -81,6 +94,14 @@
     <div>
       <div class="brand"><div class="brand-mark">O</div>Overlay</div>
       <div class="workbook-name" id="workbookName">Connecting…</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="icon-btn-sm" id="undoBtn" onclick="undo()" disabled title="Undo (Ctrl+Z)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+      </button>
+      <button class="icon-btn-sm" id="redoBtn" onclick="redo()" disabled title="Redo (Ctrl+Y)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-3-7.7L21 8"/></svg>
+      </button>
     </div>
     <div style="text-align:right;">
       <button class="publish-btn" id="publishBtn" onclick="publishDashboard()">
@@ -125,7 +146,9 @@
 
     <div class="canvas-wrap" id="canvasWrap">
       <div class="canvas" id="canvas">
-        <div class="empty-hint" id="emptyHint">Click an element on the left to drop it here. Drag to move, corner-drag to resize, click to open its setup panel.</div>
+        <div class="empty-hint" id="emptyHint">Click an element on the left to drop it here. Drag to move, corner-drag to resize, click to open its setup panel. Right-click to duplicate.</div>
+        <div class="guide-v" id="guideV"></div>
+        <div class="guide-h" id="guideH"></div>
       </div>
     </div>
   </div>
@@ -136,10 +159,13 @@ let elements = {};      // id -> data object (matches OverlayElements schema)
 let selectedId = null;
 let zTop = 10;
 let panelEl = null;
+let history = [];
+let historyIndex = -1;
+const MAX_HISTORY = 60;
 
 const canvas = document.getElementById('canvas');
 
-Office.onReady((info) => {
+Office.onReady(async (info) => {
   const nameEl = document.getElementById('workbookName');
   if (info.host === Office.HostType.Excel) {
     Excel.run(async (context) => {
@@ -148,11 +174,71 @@ Office.onReady((info) => {
       await context.sync();
       nameEl.textContent = wb.name || 'Untitled workbook';
     }).catch((e)=>{ nameEl.textContent = 'Excel connected'; console.error(e); });
-    loadExistingDesign();
+    await loadExistingDesign();
   } else {
     nameEl.textContent = 'Preview (not running in Excel)';
   }
+  pushHistory(); // baseline snapshot so undo has somewhere to return to
 });
+
+document.addEventListener('keydown', (e)=>{
+  const isUndo = (e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !e.shiftKey;
+  const isRedo = (e.ctrlKey||e.metaKey) && (e.key.toLowerCase()==='y' || (e.key.toLowerCase()==='z' && e.shiftKey));
+  if (isUndo) { e.preventDefault(); undo(); }
+  else if (isRedo) { e.preventDefault(); redo(); }
+});
+
+// ---------------- Undo / redo ----------------
+function pushHistory(){
+  const snap = JSON.stringify(elements);
+  if (historyIndex >= 0 && history[historyIndex] === snap) return;
+  history = history.slice(0, historyIndex + 1);
+  history.push(snap);
+  historyIndex = history.length - 1;
+  if (history.length > MAX_HISTORY) { history.shift(); historyIndex--; }
+  updateUndoRedoButtons();
+}
+function restoreState(snap){
+  document.querySelectorAll('.dash-el').forEach(n => n.remove());
+  closePanel();
+  elements = JSON.parse(snap);
+  Object.values(elements).forEach(el => renderElement(el));
+  document.getElementById('emptyHint').style.display = Object.keys(elements).length ? 'none' : 'block';
+}
+function undo(){ if (historyIndex <= 0) return; historyIndex--; restoreState(history[historyIndex]); updateUndoRedoButtons(); }
+function redo(){ if (historyIndex >= history.length - 1) return; historyIndex++; restoreState(history[historyIndex]); updateUndoRedoButtons(); }
+function updateUndoRedoButtons(){
+  const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
+  if (u) u.disabled = historyIndex <= 0;
+  if (r) r.disabled = historyIndex >= history.length - 1;
+}
+
+// ---------------- Right-click context menu (duplicate / delete) ----------------
+function showContextMenu(x, y, id){
+  removeContextMenu();
+  const menu = document.createElement('div');
+  menu.id = 'ctxMenu';
+  menu.className = 'ctx-menu';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.innerHTML = `
+    <div class="ctx-item" onclick="duplicateElement('${id}')">Duplicate</div>
+    <div class="ctx-item danger" onclick="deleteElement('${id}')">Delete</div>
+  `;
+  document.body.appendChild(menu);
+  setTimeout(()=>{ document.addEventListener('mousedown', removeContextMenu, { once:true }); }, 0);
+}
+function removeContextMenu(){ const m = document.getElementById('ctxMenu'); if (m) m.remove(); }
+function duplicateElement(id){
+  removeContextMenu();
+  const copy = JSON.parse(JSON.stringify(elements[id]));
+  copy.id = 'el_' + Math.random().toString(36).slice(2, 9);
+  copy.left += 16; copy.top += 16;
+  elements[copy.id] = copy;
+  renderElement(copy);
+  selectElement(copy.id);
+  pushHistory();
+}
 
 // ---------------- Add / render elements on canvas ----------------
 function addElement(type) {
@@ -164,6 +250,7 @@ function addElement(type) {
   renderElement(el);
   selectElement(el.id);
   document.getElementById('emptyHint').style.display = 'none';
+  pushHistory();
 }
 
 function renderElement(el) {
@@ -179,6 +266,10 @@ function renderElement(el) {
   canvas.appendChild(node);
   makeDraggable(node, handle, el);
   node.addEventListener('mousedown', () => selectElement(el.id));
+  node.addEventListener('contextmenu', (e)=>{
+    e.preventDefault(); e.stopPropagation();
+    showContextMenu(e.clientX, e.clientY, el.id);
+  });
 }
 
 function redrawElement(el) {
@@ -193,6 +284,7 @@ function redrawElement(el) {
 function makeDraggable(node, handle, el) {
   let dragging=false, resizing=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0;
   node.addEventListener('mousedown', (e)=>{
+    if (e.button !== 0) return; // ignore right-click, handled by contextmenu
     if (e.target === handle) {
       resizing = true; sx=e.clientX; sy=e.clientY; ow=el.width; oh=el.height;
       e.stopPropagation(); e.preventDefault(); return;
@@ -203,10 +295,13 @@ function makeDraggable(node, handle, el) {
   });
   document.addEventListener('mousemove', (e)=>{
     if (dragging) {
-      el.left = ox + (e.clientX - sx);
-      el.top = oy + (e.clientY - sy);
+      const rawLeft = ox + (e.clientX - sx);
+      const rawTop = oy + (e.clientY - sy);
+      const snap = computeSnap(el, rawLeft, rawTop);
+      el.left = snap.left; el.top = snap.top;
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
+      showGuides(snap);
       if (selectedId === el.id) positionPanel(node);
     } else if (resizing) {
       el.width = Math.max(24, ow + (e.clientX - sx));
@@ -216,7 +311,54 @@ function makeDraggable(node, handle, el) {
       if (selectedId === el.id) positionPanel(node);
     }
   });
-  document.addEventListener('mouseup', ()=>{ dragging=false; resizing=false; });
+  document.addEventListener('mouseup', ()=>{
+    if (dragging && (el.left !== ox || el.top !== oy)) pushHistory();
+    if (resizing && (el.width !== ow || el.height !== oh)) pushHistory();
+    dragging = false; resizing = false;
+    hideGuides();
+  });
+}
+
+// ---------------- Alignment guides ----------------
+const SNAP_THRESHOLD = 5;
+function computeSnap(el, left, top){
+  const width = el.width, height = el.height;
+  const right = left + width, bottom = top + height;
+  const centerX = left + width/2, centerY = top + height/2;
+  let bestV = null, bestH = null;
+
+  Object.values(elements).forEach(other=>{
+    if (other.id === el.id) return;
+    const oLeft = other.left, oRight = other.left+other.width, oCenterX = other.left+other.width/2;
+    const oTop = other.top, oBottom = other.top+other.height, oCenterY = other.top+other.height/2;
+
+    [[left,oLeft],[left,oRight],[left,oCenterX],[right,oLeft],[right,oRight],[right,oCenterX],[centerX,oLeft],[centerX,oRight],[centerX,oCenterX]]
+      .forEach(([mine,theirs])=>{
+        const diff = Math.abs(mine-theirs);
+        if (diff <= SNAP_THRESHOLD && (!bestV || diff < bestV.diff)) bestV = { diff, guideX: theirs, delta: theirs-mine };
+      });
+    [[top,oTop],[top,oBottom],[top,oCenterY],[bottom,oTop],[bottom,oBottom],[bottom,oCenterY],[centerY,oTop],[centerY,oBottom],[centerY,oCenterY]]
+      .forEach(([mine,theirs])=>{
+        const diff = Math.abs(mine-theirs);
+        if (diff <= SNAP_THRESHOLD && (!bestH || diff < bestH.diff)) bestH = { diff, guideY: theirs, delta: theirs-mine };
+      });
+  });
+
+  return {
+    left: left + (bestV ? bestV.delta : 0),
+    top: top + (bestH ? bestH.delta : 0),
+    guideX: bestV ? bestV.guideX : null,
+    guideY: bestH ? bestH.guideY : null
+  };
+}
+function showGuides(snap){
+  const gv = document.getElementById('guideV'), gh = document.getElementById('guideH');
+  if (snap.guideX !== null) { gv.style.left = snap.guideX + 'px'; gv.style.display = 'block'; } else { gv.style.display = 'none'; }
+  if (snap.guideY !== null) { gh.style.top = snap.guideY + 'px'; gh.style.display = 'block'; } else { gh.style.display = 'none'; }
+}
+function hideGuides(){
+  document.getElementById('guideV').style.display = 'none';
+  document.getElementById('guideH').style.display = 'none';
 }
 
 // ---------------- Selection + property panel ----------------
@@ -282,7 +424,7 @@ function renderTab(tab, id) {
   if (tab === 'appearance') {
     const showText = ['button','text','shape','group','repeating','popup','floating','input','multiline','dropdown','date','upload','graph'].includes(el.type);
     body.innerHTML = `
-      ${showText ? `<div class="field"><div class="field-label">Label / text</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)"></div>` : ''}
+      ${showText ? `<div class="field"><div class="field-label">Label / text</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()"></div>` : ''}
       <div class="field">
         <div class="field-label">Fill color</div>
         <div class="swatch-row">
@@ -300,19 +442,19 @@ function renderTab(tab, id) {
     body.innerHTML = `
       <div class="field">
         <div class="field-label">Cell range binding <span style="color:var(--text-faint);font-weight:400;">optional</span></div>
-        <input class="field-input mono" value="${el.binding||''}" placeholder="e.g. Sheet1!B2:E10" oninput="updateBinding('${id}', this.value)">
+        <input class="field-input mono" value="${el.binding||''}" placeholder="e.g. Sheet1!B2:E10" oninput="updateBinding('${id}', this.value)" onblur="pushHistory()">
       </div>
       <div class="hint" style="font-size:10px;color:var(--text-faint);margin-top:6px;line-height:1.5;">Live data pulled from this range isn't wired up yet — this just records which range the element is meant to represent.</div>
     `;
   } else if (tab === 'layout') {
     body.innerHTML = `
       <div class="field-row">
-        <div class="field"><div class="field-label">X</div><input class="field-input mono" value="${el.left}" oninput="setPos('${id}','left',this.value)"></div>
-        <div class="field"><div class="field-label">Y</div><input class="field-input mono" value="${el.top}" oninput="setPos('${id}','top',this.value)"></div>
+        <div class="field"><div class="field-label">X</div><input class="field-input mono" value="${el.left}" oninput="setPos('${id}','left',this.value)" onblur="pushHistory()"></div>
+        <div class="field"><div class="field-label">Y</div><input class="field-input mono" value="${el.top}" oninput="setPos('${id}','top',this.value)" onblur="pushHistory()"></div>
       </div>
       <div class="field-row">
-        <div class="field"><div class="field-label">Width</div><input class="field-input mono" value="${el.width}" oninput="setPos('${id}','width',this.value)"></div>
-        <div class="field"><div class="field-label">Height</div><input class="field-input mono" value="${el.height}" oninput="setPos('${id}','height',this.value)"></div>
+        <div class="field"><div class="field-label">Width</div><input class="field-input mono" value="${el.width}" oninput="setPos('${id}','width',this.value)" onblur="pushHistory()"></div>
+        <div class="field"><div class="field-label">Height</div><input class="field-input mono" value="${el.height}" oninput="setPos('${id}','height',this.value)" onblur="pushHistory()"></div>
       </div>
     `;
   }
@@ -325,17 +467,20 @@ function setFill(id, color, node){
   node.classList.add('active');
   elements[id].fill = color;
   redrawElement(elements[id]);
+  pushHistory();
 }
 function setPos(id, prop, v){
   elements[id][prop] = parseFloat(v) || 0;
   redrawElement(elements[id]);
 }
 function deleteElement(id){
+  removeContextMenu();
   const node = document.getElementById('node_' + id);
   if (node) node.remove();
   delete elements[id];
   closePanel();
   if (Object.keys(elements).length === 0) document.getElementById('emptyHint').style.display='block';
+  pushHistory();
 }
 
 document.getElementById('canvas').addEventListener('mousedown', (e)=>{
