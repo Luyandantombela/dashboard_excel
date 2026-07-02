@@ -263,6 +263,87 @@
     border-color: var(--emerald);
     background: var(--emerald-soft);
   }
+  
+  /* Chart Picker Styles */
+  .chart-picker-view {
+    display: none;
+  }
+  
+  .chart-picker-view.active {
+    display: block;
+  }
+  
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .chart-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 6px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s ease;
+  }
+  
+  .chart-chip:hover {
+    background: rgba(30,127,92,0.16);
+    border-color: rgba(30,127,92,0.4);
+  }
+  
+  .chart-chip svg {
+    color: rgba(255,255,255,0.75);
+    width: 24px;
+    height: 24px;
+  }
+  
+  .chart-chip:hover svg {
+    color: var(--emerald);
+  }
+  
+  .chart-chip-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+    text-align: center;
+    line-height: 1.2;
+  }
+  
+  .view-toggle {
+    display: flex;
+    gap: 4px;
+    padding: 0 6px 8px 6px;
+  }
+  
+  .view-toggle-btn {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    border: none;
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.12s ease;
+  }
+  
+  .view-toggle-btn.active {
+    background: var(--emerald);
+    color: #fff;
+  }
+  
+  .view-toggle-btn:hover:not(.active) {
+    background: rgba(30,127,92,0.16);
+  }
 </style>
 </head>
 <body>
@@ -291,32 +372,48 @@
 
   <div class="body-row">
     <div class="rail">
-      <div class="rail-scroll">
-        <div class="group-label" style="padding-top:0;">Visual</div>
-        <div class="element-grid">
-          <div class="element-chip" onclick="addElement('button')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/></svg><span class="element-chip-label">Button</span></div>
-          <div class="element-chip" onclick="addElement('icon')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><span class="element-chip-label">Icon</span></div>
-          <div class="element-chip" onclick="addElement('image')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg><span class="element-chip-label">Image</span></div>
-          <div class="element-chip" onclick="addElement('text')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6h14M12 6v14"/></svg><span class="element-chip-label">Text</span></div>
-          <div class="element-chip" onclick="addElement('shape')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 18H3z"/></svg><span class="element-chip-label">Shape</span></div>
-          <div class="element-chip" onclick="addElement('graph')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M12 19V5M20 19v-7"/></svg><span class="element-chip-label">Graph</span></div>
+      <div class="rail-scroll" id="railScroll">
+        <!-- View Toggle -->
+        <div class="view-toggle" style="padding-top:10px;">
+          <button class="view-toggle-btn active" id="elementsViewBtn" onclick="switchToElementsView()">Elements</button>
+          <button class="view-toggle-btn" id="chartsViewBtn" onclick="switchToChartsView()">Charts</button>
         </div>
-        <div class="group-label">Containers</div>
-        <div class="element-grid">
-          <div class="element-chip" onclick="addElement('group')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="element-chip-label">Group</span></div>
-          <div class="element-chip" onclick="addElement('repeating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><rect x="3" y="10" width="18" height="4"/><rect x="3" y="16" width="18" height="4"/></svg><span class="element-chip-label">Repeating</span></div>
-          <div class="element-chip" onclick="addElement('popup')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/></svg><span class="element-chip-label">Popup</span></div>
-          <div class="element-chip" onclick="addElement('floating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="14" height="12" rx="2"/></svg><span class="element-chip-label">Floating</span></div>
+        
+        <!-- Elements View -->
+        <div id="elementsView" class="element-picker-view active">
+          <div class="group-label" style="padding-top:0;">Visual</div>
+          <div class="element-grid">
+            <div class="element-chip" onclick="addElement('button')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/></svg><span class="element-chip-label">Button</span></div>
+            <div class="element-chip" onclick="addElement('icon')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><span class="element-chip-label">Icon</span></div>
+            <div class="element-chip" onclick="addElement('image')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg><span class="element-chip-label">Image</span></div>
+            <div class="element-chip" onclick="addElement('text')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6h14M12 6v14"/></svg><span class="element-chip-label">Text</span></div>
+            <div class="element-chip" onclick="addElement('shape')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 18H3z"/></svg><span class="element-chip-label">Shape</span></div>
+          </div>
+          <div class="group-label">Containers</div>
+          <div class="element-grid">
+            <div class="element-chip" onclick="addElement('group')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="element-chip-label">Group</span></div>
+            <div class="element-chip" onclick="addElement('repeating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><rect x="3" y="10" width="18" height="4"/><rect x="3" y="16" width="18" height="4"/></svg><span class="element-chip-label">Repeating</span></div>
+            <div class="element-chip" onclick="addElement('popup')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/></svg><span class="element-chip-label">Popup</span></div>
+            <div class="element-chip" onclick="addElement('floating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="14" height="12" rx="2"/></svg><span class="element-chip-label">Floating</span></div>
+          </div>
+          <div class="group-label">Input forms</div>
+          <div class="element-grid">
+            <div class="element-chip" onclick="addElement('input')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Input</span></div>
+            <div class="element-chip" onclick="addElement('multiline')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/></svg><span class="element-chip-label">Multiline</span></div>
+            <div class="element-chip" onclick="addElement('dropdown')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/></svg><span class="element-chip-label">Dropdown</span></div>
+            <div class="element-chip" onclick="addElement('checkbox')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/></svg><span class="element-chip-label">Checkbox</span></div>
+            <div class="element-chip" onclick="addElement('slider')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="14" cy="12" r="3"/></svg><span class="element-chip-label">Slider</span></div>
+            <div class="element-chip" onclick="addElement('date')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/></svg><span class="element-chip-label">Date</span></div>
+            <div class="element-chip" onclick="addElement('upload')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Upload</span></div>
+          </div>
         </div>
-        <div class="group-label">Input forms</div>
-        <div class="element-grid">
-          <div class="element-chip" onclick="addElement('input')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Input</span></div>
-          <div class="element-chip" onclick="addElement('multiline')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/></svg><span class="element-chip-label">Multiline</span></div>
-          <div class="element-chip" onclick="addElement('dropdown')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/></svg><span class="element-chip-label">Dropdown</span></div>
-          <div class="element-chip" onclick="addElement('checkbox')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/></svg><span class="element-chip-label">Checkbox</span></div>
-          <div class="element-chip" onclick="addElement('slider')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="14" cy="12" r="3"/></svg><span class="element-chip-label">Slider</span></div>
-          <div class="element-chip" onclick="addElement('date')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/></svg><span class="element-chip-label">Date</span></div>
-          <div class="element-chip" onclick="addElement('upload')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Upload</span></div>
+        
+        <!-- Charts View -->
+        <div id="chartsView" class="chart-picker-view">
+          <div class="group-label" style="padding-top:0;">Chart Types</div>
+          <div class="chart-grid" id="chartGrid">
+            <!-- Charts will be populated by JS -->
+          </div>
         </div>
       </div>
     </div>
@@ -343,6 +440,52 @@ const MAX_HISTORY = 60;
 
 const canvas = document.getElementById('canvas');
 
+// View Switching
+function switchToElementsView() {
+  document.getElementById('elementsView').classList.add('active');
+  document.getElementById('chartsView').classList.remove('active');
+  document.getElementById('elementsViewBtn').classList.add('active');
+  document.getElementById('chartsViewBtn').classList.remove('active');
+}
+
+function switchToChartsView() {
+  document.getElementById('chartsView').classList.add('active');
+  document.getElementById('elementsView').classList.remove('active');
+  document.getElementById('chartsViewBtn').classList.add('active');
+  document.getElementById('elementsViewBtn').classList.remove('active');
+}
+
+// Populate Chart Grid
+function populateChartGrid() {
+  const chartGrid = document.getElementById('chartGrid');
+  if (!window.OverlayElements || !window.OverlayElements.CHART_TYPES) return;
+  
+  chartGrid.innerHTML = window.OverlayElements.CHART_TYPES.map(chart => `
+    <div class="chart-chip" onclick="addChartElement('${chart.id}')">
+      <i data-lucide="${chart.icon}"></i>
+      <span class="chart-chip-label">${chart.label}</span>
+    </div>
+  `).join('');
+  
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+// Add Chart Element
+function addChartElement(chartTypeId) {
+  const el = OverlayElements.makeElement('graph', {
+    left: 40 + (Object.keys(elements).length * 24) % 500,
+    top: 30 + (Object.keys(elements).length * 30) % 350,
+    meta: { chartType: chartTypeId }
+  });
+  elements[el.id] = el;
+  renderElement(el);
+  selectElement(el.id);
+  document.getElementById('emptyHint').style.display = 'none';
+  pushHistory();
+}
+
 Office.onReady(async (info) => {
   const nameEl = document.getElementById('workbookName');
   if (info.host === Office.HostType.Excel) {
@@ -356,6 +499,9 @@ Office.onReady(async (info) => {
   } else {
     nameEl.textContent = 'Preview (not running in Excel)';
   }
+  
+  // Populate chart grid
+  populateChartGrid();
   pushHistory(); // baseline snapshot so undo has somewhere to return to
 });
 
@@ -1082,6 +1228,23 @@ function renderTab(tab, id) {
         });
       }
     }
+  } else if (tab === 'appearance' && el.type === 'graph') {
+    const m = el.meta || {};
+    const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
+    body.innerHTML = `
+      <div class="field">
+        <div class="field-label">Chart Type</div>
+        <select class="field-input" onchange="setMeta('${id}','chartType',this.value)">
+          ${chartTypes.map(ct => `<option value="${ct.id}" ${((m.chartType||'line')===ct.id)?'selected':''}>${ct.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Label</div>
+        <input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()">
+      </div>
+      <div class="divider"></div>
+      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+    `;
   } else if (tab === 'appearance') {
     const showText = ['text','shape','group','repeating','popup','floating','input','multiline','dropdown','date','upload','graph'].includes(el.type);
     body.innerHTML = `
