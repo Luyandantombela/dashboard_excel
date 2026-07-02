@@ -678,8 +678,153 @@ function renderTab(tab, id) {
         ()=>{ commitColorChange(id); });
     });
     document.getElementById('bgNoneBtn').addEventListener('click', ()=>{ setMeta(id,'bg',null); });
+  } else if (tab === 'appearance' && el.type === 'button') {
+    const m = el.meta || {};
+    const fonts = ['Inter','Space Grotesk','JetBrains Mono','Roboto','Open Sans','Lato','Montserrat','Poppins','Nunito',
+      'Raleway','Playfair Display','Merriweather','Oswald','Source Sans Pro','PT Sans','Ubuntu','Mukta','Rubik',
+      'Work Sans','Karla','Quicksand','Fira Sans','Barlow','DM Sans','Manrope','Inconsolata','IBM Plex Sans',
+      'IBM Plex Mono','IBM Plex Serif','Crimson Text','Libre Baskerville','Cormorant Garamond','Josefin Sans',
+      'Bitter','Archivo','Heebo','Titillium Web','Noto Sans','Noto Serif','Zilla Slab','Vollkorn',
+      'Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma','Trebuchet MS'];
+    const fontWeights = [100,200,300,400,500,600,700,800,900];
+    const borderStyles = ['none','solid','dashed','dotted'];
+    const shadowStyles = ['none','0 2px 4px rgba(0,0,0,0.1)','0 4px 8px rgba(0,0,0,0.15)','0 8px 16px rgba(0,0,0,0.2)','0 16px 32px rgba(0,0,0,0.25)'];
+    body.innerHTML = `
+      <div class="field"><div class="field-label">Label</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()"></div>
+      <div class="field">
+        <div class="field-label">Opacity</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="field-input mono" type="number" min="0" max="100" value="${Math.round((m.opacity!=null?m.opacity*100:100))}" oninput="setMeta('${id}','opacity',parseFloat(this.value)/100)" onblur="pushHistory()" style="flex:1;">
+          <span style="color:var(--text-faint);width:28px;text-align:right;">%</span>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Font</div>
+          <select class="field-input" onchange="setMeta('${id}','fontFamily',this.value)">
+            ${fonts.map(f=>`<option value="${f}" ${((m.fontFamily||'Inter')===f)?'selected':''}>${f}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Weight</div>
+          <select class="field-input" onchange="setMeta('${id}','fontWeight',parseInt(this.value))">
+            ${fontWeights.map(w=>`<option value="${w}" ${((m.fontWeight||600)===w)?'selected':''}>${w}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Size</div>
+          <input class="field-input mono" type="number" value="${m.fontSize||13}" oninput="setMeta('${id}','fontSize',parseFloat(this.value)||13)" onblur="pushHistory()">
+        </div>
+        <div class="field">
+          <div class="field-label">Align</div>
+          <div style="display:flex;gap:4px;">
+            <button class="style-toggle ${(m.align||'center')==='left'?'active':''}" onclick="setMeta('${id}','align','left')" title="Left">L</button>
+            <button class="style-toggle ${(m.align||'center')==='center'?'active':''}" onclick="setMeta('${id}','align','center')" title="Center">C</button>
+            <button class="style-toggle ${m.align==='right'?'active':''}" onclick="setMeta('${id}','align','right')" title="Right">R</button>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Style</div>
+        <div style="display:flex;gap:4px;">
+          <button class="style-toggle ${m.bold?'active':''}" style="font-weight:700;" onclick="toggleMeta('${id}','bold')" title="Bold">B</button>
+          <button class="style-toggle ${m.italic?'active':''}" style="font-style:italic;" onclick="toggleMeta('${id}','italic')" title="Italic">I</button>
+          <button class="style-toggle ${m.underline?'active':''}" style="text-decoration:underline;" onclick="toggleMeta('${id}','underline')" title="Underline">U</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Text color</div>
+        <button class="color-swatch-btn" id="textColorSwatchBtn" type="button">
+          <span class="chip" id="textColorChip" style="background:${el.fill||'#FFFFFF'}"></span>
+          <span class="hex-label" id="textColorHex">${el.fill||'#FFFFFF'}</span>
+        </button>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Word spacing</div>
+          <input class="field-input mono" type="number" value="${m.wordSpacing||0}" oninput="setMeta('${id}','wordSpacing',parseFloat(this.value)||0)" onblur="pushHistory()">
+        </div>
+        <div class="field">
+          <div class="field-label">Line spacing</div>
+          <input class="field-input mono" type="number" step="0.1" value="${m.lineSpacing||1.4}" oninput="setMeta('${id}','lineSpacing',parseFloat(this.value)||1.4)" onblur="pushHistory()">
+        </div>
+        <div class="field">
+          <div class="field-label">Letter spacing</div>
+          <input class="field-input mono" type="number" step="0.5" value="${m.letterSpacing||0}" oninput="setMeta('${id}','letterSpacing',parseFloat(this.value)||0)" onblur="pushHistory()">
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Background color</div>
+        <button class="color-swatch-btn" id="bgColorSwatchBtn" type="button">
+          <span class="chip" id="bgColorChip" style="background:${m.bg||'#1E7F5C'}"></span>
+          <span class="hex-label" id="bgColorHex">${m.bg||'#1E7F5C'}</span>
+        </button>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Border style</div>
+          <select class="field-input" onchange="setMeta('${id}','borderStyle',this.value)">
+            ${borderStyles.map(s=>`<option value="${s}" ${((m.borderStyle||'none')===s)?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Roundness</div>
+          <input class="field-input mono" type="number" value="${m.radius!=null?m.radius:8}" oninput="setMeta('${id}','radius',parseFloat(this.value)||0)" onblur="pushHistory()">
+        </div>
+      </div>
+      ${m.borderStyle!=='none'?`
+        <div class="field-row">
+          <div class="field">
+            <div class="field-label">Border width</div>
+            <input class="field-input mono" type="number" value="${m.borderWidth||1}" oninput="setMeta('${id}','borderWidth',parseFloat(this.value)||1)" onblur="pushHistory()">
+          </div>
+          <div class="field">
+            <div class="field-label">Border color</div>
+            <button class="color-swatch-btn" id="borderColorSwatchBtn" type="button">
+              <span class="chip" id="borderColorChip" style="background:${m.borderColor||'#000000'}"></span>
+            </button>
+          </div>
+        </div>
+      `:''}
+      <div class="field">
+        <div class="field-label">Element shadow</div>
+        <select class="field-input" onchange="setMeta('${id}','shadowStyle',this.value)">
+          ${shadowStyles.map((s, i)=>`<option value="${s}" ${((m.shadowStyle||'none')===s)?'selected':''}>${s==='none'?'None':['Light','Medium','Heavy','Extra Heavy'][i-1]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Text shadow</div>
+        <div style="display:flex;gap:4px;">
+          <button class="style-toggle ${m.showTextShadow?'active':''}" onclick="toggleMeta('${id}','showTextShadow')">✓</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+    `;
+    document.getElementById('textColorSwatchBtn').addEventListener('click', function(){
+      openColorPicker(this, elements[id].fill || '#FFFFFF',
+        (hex)=>{ liveSetFill(id, hex); document.getElementById('textColorChip').style.background=hex; document.getElementById('textColorHex').textContent=hex; },
+        ()=>{ commitColorChange(id); });
+    });
+    document.getElementById('bgColorSwatchBtn').addEventListener('click', function(){
+      openColorPicker(this, (elements[id].meta && elements[id].meta.bg) || '#1E7F5C',
+        (hex)=>{ liveSetBg(id, hex); document.getElementById('bgColorChip').style.background=hex; document.getElementById('bgColorHex').textContent=hex; },
+        ()=>{ commitColorChange(id); });
+    });
+    if (m.borderStyle!=='none') {
+      const borderBtn = document.getElementById('borderColorSwatchBtn');
+      if (borderBtn) {
+        borderBtn.addEventListener('click', function(){
+          openColorPicker(this, (elements[id].meta && elements[id].meta.borderColor) || '#000000',
+            (hex)=>{ setMeta(id, 'borderColor', hex); document.getElementById('borderColorChip').style.background=hex; },
+            ()=>{ pushHistory(); });
+        });
+      }
+    }
   } else if (tab === 'appearance') {
-    const showText = ['button','text','shape','group','repeating','popup','floating','input','multiline','dropdown','date','upload','graph'].includes(el.type);
+    const showText = ['text','shape','group','repeating','popup','floating','input','multiline','dropdown','date','upload','graph'].includes(el.type);
     body.innerHTML = `
       ${showText ? `<div class="field"><div class="field-label">Label / text</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()"></div>` : ''}
       <div class="field">
