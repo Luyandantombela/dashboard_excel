@@ -121,7 +121,6 @@ window.OverlayElements = (function () {
     'shield-folder-check', 'shield-folder-open', 'shield-folder-sync', 'shield-folder-key', 'shield-folder-lock'
   ];
 
-  window.OverlayElements.ICONS = ICONS;
   function chartSVG(title) {
     return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:8px;">${title || 'Chart'}</div>
     <svg width="100%" height="100%" viewBox="0 0 260 110" preserveAspectRatio="none">
@@ -322,5 +321,5 @@ window.OverlayElements = (function () {
     }, overrides || {});
   }
 
-  return { TYPE_LABELS, DEFAULTS, buildNode, makeElement };
+  return { TYPE_LABELS, DEFAULTS, buildNode, makeElement, ICONS };
 })();
