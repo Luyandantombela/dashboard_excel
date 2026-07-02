@@ -23,19 +23,35 @@ window.OverlayElements = (function () {
     slider: 'Slider input', date: 'Date picker', upload: 'File uploader'
   };
 
+  const CHART_TYPES = [
+    { id: 'line', label: 'Line Chart', icon: 'line-chart' },
+    { id: 'area', label: 'Area Chart', icon: 'area-chart' },
+    { id: 'column', label: 'Column Chart', icon: 'bar-chart-3' },
+    { id: 'bar', label: 'Bar Chart', icon: 'bar-chart-2' },
+    { id: 'pie', label: 'Pie Chart', icon: 'pie-chart' },
+    { id: 'donut', label: 'Donut Chart', icon: 'circle' },
+    { id: 'histogram', label: 'Histogram', icon: 'bar-chart-3' },
+    { id: 'box', label: 'Box Plot', icon: 'square' },
+    { id: 'scatter', label: 'Scatter Plot', icon: 'circle-dashed' },
+    { id: 'bubble', label: 'Bubble Chart', icon: 'circle' },
+    { id: 'gantt', label: 'Gantt Chart', icon: 'calendar' },
+    { id: 'heat', label: 'Heat Map', icon: 'square' },
+    { id: 'waterfall', label: 'Waterfall Chart', icon: 'bar-chart-2' }
+  ];
+
   const DEFAULTS = {
     button:   { w:120, h:40,  label:'Refresh view' },
     icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24 } },
     image:    { w:160, h:110, label:'Image' },
     text:     { w:180, h:28,  label:'Section title' },
     shape:    { w:90,  h:90,  label:'' },
-    graph:    { w:280, h:170, label:'', binding:'Sheet1!B2:E10' },
+    graph:    { w:280, h:170, label:'', binding:'Sheet1!B2:E10', meta:{ chartType:'line' } },
     group:    { w:320, h:220, label:'Group' },
-    repeating:{ w:320, h:160, label:'Repeating group', binding:'Sheet1!A2:D20' },
+    repeating: { w:320, h:160, label:'Repeating group', binding:'Sheet1!A2:D20' },
     popup:    { w:280, h:180, label:'Popup' },
     floating: { w:260, h:170, label:'Floating group' },
     input:    { w:200, h:38,  label:'Enter value' },
-    multiline:{ w:220, h:80,  label:'Enter notes' },
+    multiline: { w:220, h:80, label:'Enter notes' },
     dropdown: { w:200, h:38,  label:'Select region', meta:{ options:['North','South','East','West'] } },
     checkbox: { w:22,  h:22,  label:'' },
     slider:   { w:180, h:34,  label:'', meta:{ min:0, max:100, value:55 } },
@@ -104,15 +120,129 @@ window.OverlayElements = (function () {
     'shield-shopping-bag', 'shield-receipt'
   ];
 
-  function chartSVG(title) {
-    return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:8px;">${title || 'Chart'}</div>
+  function chartSVG(title, chartType = 'line') {
+    let chartContent = '';
+    switch (chartType) {
+      case 'area':
+        chartContent = `
+          <polygon points="10,100 50,60 90,80 130,30 170,70 210,50 250,90 250,100" fill="#1E7F5C" opacity="0.5"/>
+          <polyline points="10,100 50,60 90,80 130,30 170,70 210,50 250,90" fill="none" stroke="#1E7F5C" stroke-width="2"/>
+        `;
+        break;
+      case 'pie':
+        chartContent = `
+          <circle cx="130" cy="55" r="40" fill="#1E7F5C" opacity="0.8"/>
+          <path d="M130,55 L130,15 A40,40 0 0,1 170,95 Z" fill="#E8A33D"/>
+          <path d="M130,55 L170,95 A40,40 0 0,1 90,95 Z" fill="#3B82F6"/>
+        `;
+        break;
+      case 'donut':
+        chartContent = `
+          <circle cx="130" cy="55" r="40" fill="#1E7F5C" opacity="0.8"/>
+          <circle cx="130" cy="55" r="20" fill="#fff"/>
+          <path d="M130,55 L130,15 A40,40 0 0,1 170,95 Z" fill="#E8A33D"/>
+          <path d="M130,55 L170,95 A40,40 0 0,1 90,95 Z" fill="#3B82F6"/>
+        `;
+        break;
+      case 'bar':
+        chartContent = `
+          <rect x="30" y="20" width="30" height="70" rx="3" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="75" y="40" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.75"/>
+          <rect x="120" y="10" width="30" height="80" rx="3" fill="#1E7F5C"/>
+          <rect x="165" y="50" width="30" height="40" rx="3" fill="#1E7F5C" opacity="0.6"/>
+          <rect x="210" y="30" width="30" height="60" rx="3" fill="#1E7F5C" opacity="0.8"/>
+        `;
+        break;
+      case 'histogram':
+        chartContent = `
+          <rect x="15" y="30" width="20" height="60" rx="2" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="40" y="50" width="20" height="40" rx="2" fill="#1E7F5C" opacity="0.75"/>
+          <rect x="65" y="20" width="20" height="70" rx="2" fill="#1E7F5C"/>
+          <rect x="90" y="60" width="20" height="30" rx="2" fill="#1E7F5C" opacity="0.6"/>
+          <rect x="115" y="40" width="20" height="50" rx="2" fill="#1E7F5C" opacity="0.8"/>
+          <rect x="140" y="10" width="20" height="80" rx="2" fill="#1E7F5C" opacity="0.95"/>
+          <rect x="165" y="35" width="20" height="55" rx="2" fill="#1E7F5C" opacity="0.7"/>
+          <rect x="190" y="55" width="20" height="35" rx="2" fill="#1E7F5C" opacity="0.65"/>
+          <rect x="215" y="45" width="20" height="45" rx="2" fill="#1E7F5C" opacity="0.85"/>
+        `;
+        break;
+      case 'scatter':
+        chartContent = `
+          <circle cx="40" cy="70" r="4" fill="#1E7F5C"/>
+          <circle cx="70" cy="50" r="4" fill="#E8A33D"/>
+          <circle cx="100" cy="80" r="4" fill="#3B82F6"/>
+          <circle cx="130" cy="40" r="4" fill="#1E7F5C"/>
+          <circle cx="160" cy="60" r="4" fill="#E8A33D"/>
+          <circle cx="190" cy="30" r="4" fill="#3B82F6"/>
+          <circle cx="220" cy="70" r="4" fill="#1E7F5C"/>
+        `;
+        break;
+      case 'bubble':
+        chartContent = `
+          <circle cx="50" cy="70" r="6" fill="#1E7F5C" opacity="0.8"/>
+          <circle cx="90" cy="50" r="8" fill="#E8A33D" opacity="0.7"/>
+          <circle cx="130" cy="80" r="5" fill="#3B82F6" opacity="0.9"/>
+          <circle cx="170" cy="40" r="9" fill="#1E7F5C" opacity="0.6"/>
+          <circle cx="210" cy="60" r="7" fill="#E8A33D" opacity="0.8"/>
+        `;
+        break;
+      case 'heat':
+        chartContent = `
+          <rect x="20" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.3"/>
+          <rect x="70" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.5"/>
+          <rect x="120" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.7"/>
+          <rect x="170" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="220" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.4"/>
+          <rect x="20" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.4"/>
+          <rect x="70" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.6"/>
+          <rect x="120" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.8"/>
+          <rect x="170" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.5"/>
+          <rect x="220" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.7"/>
+        `;
+        break;
+      case 'gantt':
+        chartContent = `
+          <rect x="30" y="25" width="80" height="15" rx="3" fill="#1E7F5C" opacity="0.8"/>
+          <rect x="70" y="45" width="100" height="15" rx="3" fill="#E8A33D" opacity="0.7"/>
+          <rect x="140" y="65" width="90" height="15" rx="3" fill="#3B82F6" opacity="0.8"/>
+          <rect x="50" y="85" width="120" height="15" rx="3" fill="#1E7F5C" opacity="0.6"/>
+        `;
+        break;
+      case 'waterfall':
+        chartContent = `
+          <rect x="30" y="50" width="30" height="40" rx="3" fill="#1E7F5C"/>
+          <rect x="75" y="30" width="30" height="60" rx="3" fill="#1E7F5C" opacity="0.8"/>
+          <rect x="120" y="70" width="30" height="20" rx="3" fill="#D2534A"/>
+          <rect x="165" y="40" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.7"/>
+          <rect x="210" y="55" width="30" height="35" rx="3" fill="#1E7F5C"/>
+        `;
+        break;
+      case 'box':
+        chartContent = `
+          <rect x="60" y="40" width="80" height="40" rx="3" fill="#1E7F5C" opacity="0.5" stroke="#1E7F5C" stroke-width="2"/>
+          <line x1="100" y1="20" x2="100" y2="40" stroke="#1E7F5C" stroke-width="2"/>
+          <line x1="100" y1="80" x2="100" y2="100" stroke="#1E7F5C" stroke-width="2"/>
+          <line x1="70" y1="55" x2="130" y2="55" stroke="#1E7F5C" stroke-width="2"/>
+        `;
+        break;
+      case 'line':
+      default:
+        chartContent = `
+          <polyline points="20,90 60,50 100,70 140,30 180,60 220,40 260,80" fill="none" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="20" cy="90" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="60" cy="50" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="100" cy="70" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="140" cy="30" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="180" cy="60" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="220" cy="40" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="260" cy="80" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+        `;
+        break;
+    }
+    const chartLabel = CHART_TYPES.find(c => c.id === chartType)?.label || 'Chart';
+    return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:8px;">${title || chartLabel}</div>
     <svg width="100%" height="100%" viewBox="0 0 260 110" preserveAspectRatio="none">
-      <rect x="10" y="40" width="26" height="60" rx="3" fill="#1E7F5C" opacity="0.85"/>
-      <rect x="50" y="20" width="26" height="80" rx="3" fill="#1E7F5C"/>
-      <rect x="90" y="55" width="26" height="45" rx="3" fill="#1E7F5C" opacity="0.6"/>
-      <rect x="130" y="10" width="26" height="90" rx="3" fill="#1E7F5C" opacity="0.95"/>
-      <rect x="170" y="65" width="26" height="35" rx="3" fill="#1E7F5C" opacity="0.5"/>
-      <rect x="210" y="35" width="26" height="65" rx="3" fill="#1E7F5C" opacity="0.75"/>
+      ${chartContent}
     </svg>`;
   }
 
@@ -243,8 +373,9 @@ window.OverlayElements = (function () {
         node.textContent = el.label || 'Image';
         break;
       case 'graph':
+        const chartMeta = el.meta || {};
         applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
-        node.innerHTML = chartSVG(el.label || 'Chart');
+        node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line');
         break;
       case 'group': case 'repeating': case 'popup': case 'floating':
         applyStyle(node, { background: 'rgba(30,127,92,0.04)', border: '1.5px dashed rgba(30,127,92,0.4)', color: '#6B7480', fontSize: '11px', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '6px 8px' });
@@ -304,5 +435,5 @@ window.OverlayElements = (function () {
     }, overrides || {});
   }
 
-  return { TYPE_LABELS, DEFAULTS, buildNode, makeElement, ICONS };
+  return { TYPE_LABELS, DEFAULTS, buildNode, makeElement, ICONS, CHART_TYPES };
 })();
