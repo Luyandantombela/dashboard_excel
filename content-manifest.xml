@@ -1,1 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+    xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+    xsi:type="ContentApp">
 
+  <Id>a1b2c3d4-e5f6-4a7b-8c9d-1234567890ab</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Overlay</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Overlay — Dashboard (Content)" />
+  <Description DefaultValue="Bridge test: content add-in surface for the Overlay dashboard builder." />
+  <IconUrl DefaultValue="https://luyandantombela.github.io/dashboard_excel/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://luyandantombela.github.io/dashboard_excel/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://luyandantombela.github.io/dashboard_excel" />
+
+  <AppDomains>
+    <AppDomain>https://luyandantombela.github.io</AppDomain>
+  </AppDomains>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://luyandantombela.github.io/dashboard_excel/src/content/content.html" />
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+</OfficeApp>
