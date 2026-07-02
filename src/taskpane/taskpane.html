@@ -575,7 +575,22 @@ function openPropPanel(id) {
 
   const dh = document.getElementById('propDrag');
   let dragging=false, sx=0, sy=0, ox=0, oy=0;
-  dh.addEventListener('mousedown', (e)=>{ dragging=true; sx=e.clientX; sy=e.clientY; ox=panel.offsetLeft; oy=panel.offsetTop; e.preventDefault(); });
+  function isInteractiveTarget(target){
+    const interactiveTags = ['INPUT','SELECT','TEXTAREA','BUTTON','CANVAS'];
+    let node = target;
+    while (node && node !== panel) {
+      if (interactiveTags.includes(node.tagName)) return true;
+      if (node.classList && (node.classList.contains('swatch') || node.classList.contains('style-toggle') ||
+          node.classList.contains('color-swatch-btn') || node.classList.contains('prop-tab') || node.classList.contains('prop-close'))) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+  panel.addEventListener('mousedown', (e)=>{
+    if (isInteractiveTarget(e.target)) return;
+    dragging=true; sx=e.clientX; sy=e.clientY; ox=panel.offsetLeft; oy=panel.offsetTop;
+    e.preventDefault();
+  });
   document.addEventListener('mousemove', (e)=>{
     if(dragging){
       panel.style.left=(ox+(e.clientX-sx))+'px';
