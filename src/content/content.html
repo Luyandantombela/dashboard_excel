@@ -7,12 +7,12 @@
 <style>
   body{font-family:sans-serif;margin:0;padding:16px;background:#fff;}
   h3{margin:0 0 10px 0;font-size:14px;}
-  button{padding:8px 14px;border-radius:6px;border:none;background:#1E7F5C;color:#fff;font-weight:600;cursor:pointer;margin-right:8px;}
+  button{padding:8px 14px;border-radius:6px;border:none;background:#1E7F5C;color:#fff;font-weight:600;cursor:pointer;margin-right:8px;margin-bottom:8px;}
   #status{margin-top:14px;padding:10px;border-radius:6px;background:#F5F6F8;font-family:monospace;font-size:12px;white-space:pre-wrap;}
 </style>
 </head>
 <body>
-  <h3>Content add-in test surface</h3>
+  <h3>Content add-in test surface (hidden-sheet bridge)</h3>
   <button onclick="writeValue()">Write test value (from content add-in)</button>
   <button onclick="readValue()">Read current value</button>
   <button onclick="location.reload()" style="background:#12181F;">Force full reload</button>
@@ -24,19 +24,50 @@ Office.onReady(() => {
 });
 
 async function writeValue(){
-  Office.context.document.settings.set('overlay_bridge_test', 'Written from CONTENT ADD-IN at ' + new Date().toLocaleTimeString());
-  Office.context.document.settings.saveAsync((result)=>{
-    document.getElementById('status').textContent = result.status === Office.AsyncResultStatus.Succeeded
-      ? 'Saved. Now check the task pane.'
-      : 'Save failed: ' + result.error.message;
-  });
+  const statusEl = document.getElementById('status');
+  try{
+    await Excel.run(async (context)=>{
+      const sheets = context.workbook.worksheets;
+      sheets.load('items/name');
+      await context.sync();
+      let hidden = sheets.items.find(s => s.name === '_OverlayData');
+      let sheet;
+      if(!hidden){
+        sheet = sheets.add('_OverlayData');
+        sheet.visibility = Excel.SheetVisibility.veryHidden;
+      } else {
+        sheet = sheets.getItem('_OverlayData');
+      }
+      const cell = sheet.getRange('A1');
+      cell.values = [['Written from CONTENT ADD-IN at ' + new Date().toLocaleTimeString()]];
+      await context.sync();
+    });
+    statusEl.textContent = 'Saved to hidden sheet. Now check the task pane.';
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = 'Write failed: ' + (err.message||err);
+  }
 }
 
-function readValue(){
-  const val = Office.context.document.settings.get('overlay_bridge_test');
-  document.getElementById('status').textContent = val
-    ? ('Found value:\n' + val)
-    : 'No value found yet. Write one from either surface, then reload the other.';
+async function readValue(){
+  const statusEl = document.getElementById('status');
+  try{
+    await Excel.run(async (context)=>{
+      const sheets = context.workbook.worksheets;
+      sheets.load('items/name');
+      await context.sync();
+      const hidden = sheets.items.find(s => s.name === '_OverlayData');
+      if(!hidden){ statusEl.textContent = 'No hidden sheet exists yet.'; return; }
+      const sheet = sheets.getItem('_OverlayData');
+      const cell = sheet.getRange('A1');
+      cell.load('values');
+      await context.sync();
+      statusEl.textContent = 'Found value:\n' + cell.values[0][0];
+    });
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = 'Read failed: ' + (err.message||err);
+  }
 }
 </script>
 </body>
