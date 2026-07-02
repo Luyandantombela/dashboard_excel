@@ -132,6 +132,137 @@
     border-color: var(--emerald);
     background: var(--emerald-soft);
   }
+  
+  /* Icon Preview Button */
+  .icon-preview-btn {
+    width: 100%;
+    height: 64px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s ease;
+  }
+  
+  .icon-preview-btn:hover {
+    border-color: var(--emerald);
+    background: var(--emerald-soft);
+  }
+  
+  .icon-preview-btn i {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  /* Icon Picker Modal */
+  .icon-picker-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  
+  .icon-picker-modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 48px -12px rgba(0,0,0,0.28);
+  }
+  
+  .icon-picker-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .icon-picker-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--ink);
+  }
+  
+  .icon-picker-modal-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(0,0,0,0.05);
+    color: var(--text-faint);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .icon-picker-modal-close:hover {
+    background: rgba(0,0,0,0.1);
+    color: var(--text);
+  }
+  
+  .icon-picker-modal-search {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    font-size: 13px;
+    margin-bottom: 16px;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .icon-picker-modal-search:focus {
+    outline: none;
+    border-color: var(--emerald);
+    box-shadow: 0 0 0 3px var(--emerald-soft);
+  }
+  
+  .icon-picker-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    overflow-y: auto;
+    max-height: 50vh;
+    padding-right: 4px;
+  }
+  
+  .icon-picker-modal-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: all 0.12s ease;
+    aspect-ratio: 1;
+  }
+  
+  .icon-picker-modal-item:hover {
+    border-color: var(--emerald);
+    background: var(--emerald-soft);
+  }
+  
+  .icon-picker-modal-item.active {
+    border-color: var(--emerald);
+    background: var(--emerald-soft);
+  }
 </style>
 </head>
 <body>
@@ -854,17 +985,12 @@ function renderTab(tab, id) {
     const m = el.meta || {};
     const borderStyles = ['none','solid','dashed','dotted'];
     const shadowStyles = ['none','0 2px 4px rgba(0,0,0,0.1)','0 4px 8px rgba(0,0,0,0.15)','0 8px 16px rgba(0,0,0,0.2)','0 16px 32px rgba(0,0,0,0.25)'];
-    const iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
     body.innerHTML = `
       <div class="field">
         <div class="field-label">Icon</div>
-        <div class="icon-picker" id="iconPicker">
-          ${iconList.map(iconName => `
-            <div class="icon-picker-item ${(m.iconName||'zap')===iconName?'active':''}" data-icon="${iconName}" onclick="setMeta('${id}','iconName','${iconName}')">
-              <i data-lucide="${iconName}"></i>
-            </div>
-          `).join('')}
-        </div>
+        <button class="icon-preview-btn" id="iconPreviewBtn" type="button" onclick="openIconPicker('${id}')">
+          <i data-lucide="${m.iconName||'zap'}"></i>
+        </button>
       </div>
       <div class="field-row">
         <div class="field">
@@ -931,7 +1057,7 @@ function renderTab(tab, id) {
       <div class="divider"></div>
       <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
     `;
-    // Initialize Lucide icons in picker
+    // Initialize Lucide icons in preview
     if (window.lucide) {
       window.lucide.createIcons();
     }
@@ -1020,6 +1146,73 @@ function toggleMeta(id, key){
   redrawElement(elements[id]);
   renderTab('appearance', id);
   pushHistory();
+}
+let currentIconPickerId = null;
+function openIconPicker(id) {
+  currentIconPickerId = id;
+  const el = elements[id];
+  const m = el.meta || {};
+  const iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
+  
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'icon-picker-modal-overlay';
+  modalOverlay.id = 'iconPickerModal';
+  modalOverlay.innerHTML = `
+    <div class="icon-picker-modal">
+      <div class="icon-picker-modal-header">
+        <h3>Choose an Icon</h3>
+        <button class="icon-picker-modal-close" onclick="closeIconPicker()">✕</button>
+      </div>
+      <input type="text" class="icon-picker-modal-search" id="iconSearch" placeholder="Search icons..." oninput="filterIcons()">
+      <div class="icon-picker-modal-grid" id="iconModalGrid">
+        ${iconList.map(iconName => `
+          <div class="icon-picker-modal-item ${(m.iconName||'zap')===iconName?'active':''}" data-icon="${iconName}" onclick="selectIcon('${iconName}')">
+            <i data-lucide="${iconName}"></i>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modalOverlay);
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeIconPicker();
+  });
+  
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+  
+  document.getElementById('iconSearch').focus();
+}
+function filterIcons() {
+  const searchText = document.getElementById('iconSearch').value.toLowerCase();
+  const items = document.querySelectorAll('.icon-picker-modal-item');
+  const iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
+  
+  items.forEach((item, index) => {
+    const iconName = iconList[index];
+    if (iconName.toLowerCase().includes(searchText)) {
+      item.style.display = 'flex';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+function selectIcon(iconName) {
+  if (!currentIconPickerId) return;
+  
+  if (!elements[currentIconPickerId].meta) elements[currentIconPickerId].meta = {};
+  elements[currentIconPickerId].meta.iconName = iconName;
+  redrawElement(elements[currentIconPickerId]);
+  pushHistory();
+  closeIconPicker();
+  if (panelEl) renderTab('appearance', currentIconPickerId);
+}
+function closeIconPicker() {
+  const modal = document.getElementById('iconPickerModal');
+  if (modal) modal.remove();
+  currentIconPickerId = null;
 }
 function setPos(id, prop, v){
   elements[id][prop] = parseFloat(v) || 0;
