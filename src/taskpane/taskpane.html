@@ -816,18 +816,51 @@ function showGlobalError(msg){
   wrap.innerHTML = `<div class="config-form"><div class="status-msg err">${msg}</div></div>`;
 }
 
-// ---------------- Bridge test ----------------
-function bridgeWrite(){
-  Office.context.document.settings.set('overlay_bridge_test', 'Written from TASK PANE at ' + new Date().toLocaleTimeString());
-  Office.context.document.settings.saveAsync((result)=>{
-    document.getElementById('bridgeStatus').textContent = result.status === Office.AsyncResultStatus.Succeeded
-      ? 'Saved. Now check the content add-in.'
-      : 'Save failed: ' + result.error.message;
-  });
+// ---------------- Bridge test (hidden sheet, not add-in Settings) ----------------
+async function bridgeWrite(){
+  const statusEl = document.getElementById('bridgeStatus');
+  try{
+    await Excel.run(async (context)=>{
+      const sheets = context.workbook.worksheets;
+      sheets.load('items/name');
+      await context.sync();
+      let hidden = sheets.items.find(s => s.name === '_OverlayData');
+      let sheet;
+      if(!hidden){
+        sheet = sheets.add('_OverlayData');
+        sheet.visibility = Excel.SheetVisibility.veryHidden;
+      } else {
+        sheet = sheets.getItem('_OverlayData');
+      }
+      const cell = sheet.getRange('A1');
+      cell.values = [['Written from TASK PANE at ' + new Date().toLocaleTimeString()]];
+      await context.sync();
+    });
+    statusEl.textContent = 'Saved to hidden sheet. Now check the content add-in.';
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = 'Write failed: ' + (err.message||err);
+  }
 }
-function bridgeRead(){
-  const val = Office.context.document.settings.get('overlay_bridge_test');
-  document.getElementById('bridgeStatus').textContent = val ? ('Found value:\n' + val) : 'No value found. Write one from either surface, then reload this one.';
+async function bridgeRead(){
+  const statusEl = document.getElementById('bridgeStatus');
+  try{
+    await Excel.run(async (context)=>{
+      const sheets = context.workbook.worksheets;
+      sheets.load('items/name');
+      await context.sync();
+      const hidden = sheets.items.find(s => s.name === '_OverlayData');
+      if(!hidden){ statusEl.textContent = 'No hidden sheet exists yet.'; return; }
+      const sheet = sheets.getItem('_OverlayData');
+      const cell = sheet.getRange('A1');
+      cell.load('values');
+      await context.sync();
+      statusEl.textContent = 'Found value:\n' + cell.values[0][0];
+    });
+  } catch(err){
+    console.error(err);
+    statusEl.textContent = 'Read failed: ' + (err.message||err);
+  }
 }
 </script>
 </body>
