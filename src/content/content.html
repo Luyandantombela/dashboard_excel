@@ -867,12 +867,6 @@ async function openDashboard(id, mode){
   } else {
     document.getElementById('emptyHint').style.display = 'block';
   }
-  
-  // Make sure all icons are rendered!
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
-  
   pushHistory();
   setViewMode(mode === 'view');
 }
@@ -885,11 +879,6 @@ function setViewMode(isView){
   const btn = document.getElementById('editToggleBtn');
   if (btn) btn.textContent = isView ? 'Edit' : 'View';
   if (isView) closePanel();
-  
-  // Make sure icons are rendered!
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
 }
 
 function toggleViewEditMode(){
@@ -1181,11 +1170,6 @@ function renderElement(el) {
   if (el.z === undefined || el.z === null) el.z = zTop++;
   if (el.z >= zTop) zTop = el.z + 1;
   node.style.zIndex = el.z;
-
-  // Make sure Lucide icons are rendered!
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
 
   // Add all 8 resize handles
   const handleTypes = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
@@ -1991,22 +1975,6 @@ function deleteElement(id){
 document.getElementById('canvas').addEventListener('mousedown', (e)=>{
   if (e.target.id === 'canvas') closePanel();
 });
-
-// MutationObserver to automatically render Lucide icons whenever the canvas changes!
-const canvasObserver = new MutationObserver(() => {
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
-});
-
-const canvasEl = document.getElementById('canvas');
-if (canvasEl) {
-  canvasObserver.observe(canvasEl, {
-    childList: true,
-    subtree: true,
-    attributes: true
-  });
-}
 
 // (Publish/load logic now lives in the routing layer above: saveDashboard() / loadDashboardById())
 </script>
