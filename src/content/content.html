@@ -1233,16 +1233,23 @@ function makeDraggable(node, handles, el) {
       const dx = e.clientX - sx;
       const dy = e.clientY - sy;
 
+      // Calculate resizing based on handle type, keeping opposite side/corner in place
       if (resizeHandleType.includes('left')) {
-        newLeft = ox + dx;
-        newWidth = Math.max(24, ow - dx);
+        const proposedWidth = ow - dx;
+        if (proposedWidth >= 24) {
+          newLeft = ox + dx;
+          newWidth = proposedWidth;
+        }
       } else if (resizeHandleType.includes('right')) {
         newWidth = Math.max(24, ow + dx);
       }
 
       if (resizeHandleType.includes('top')) {
-        newTop = oy + dy;
-        newHeight = Math.max(20, oh - dy);
+        const proposedHeight = oh - dy;
+        if (proposedHeight >= 20) {
+          newTop = oy + dy;
+          newHeight = proposedHeight;
+        }
       } else if (resizeHandleType.includes('bottom')) {
         newHeight = Math.max(20, oh + dy);
       }
