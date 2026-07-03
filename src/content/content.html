@@ -1275,49 +1275,96 @@ function makeDraggable(node, handles, el) {
 }
 
 // ---------------- Alignment guides ----------------
-const SNAP_THRESHOLD = 5;
-function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight){
+const SNAP_THRESHOLD = 8; // Figma-like threshold
+function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight) {
   const l = currentLeft;
   const t = currentTop;
-  const width = currentWidth;
-  const height = currentHeight;
+  const w = currentWidth;
+  const h = currentHeight;
+  
+  const r = l + w;
+  const b = t + h;
+  const cx = l + w / 2;
+  const cy = t + h / 2;
 
-  const right = l + width, bottom = t + height;
-  const centerX = l + width/2, centerY = t + height/2;
-  let bestV = null, bestH = null;
+  let bestVertical = null; // for x-axis (vertical line)
+  let bestHorizontal = null; // for y-axis (horizontal line)
 
-  Object.values(elements).forEach(other=>{
+  Object.values(elements).forEach(other => {
     if (other.id === elId) return;
-    const oLeft = other.left, oRight = other.left+other.width, oCenterX = other.left+other.width/2;
-    const oTop = other.top, oBottom = other.top+other.height, oCenterY = other.top+other.height/2;
+    
+    const oLeft = other.left;
+    const oRight = other.left + other.width;
+    const oCenterX = other.left + other.width / 2;
+    const oTop = other.top;
+    const oBottom = other.top + other.height;
+    const oCenterY = other.top + other.height / 2;
 
-    [[l,oLeft],[l,oRight],[l,oCenterX],[right,oLeft],[right,oRight],[right,oCenterX],[centerX,oLeft],[centerX,oRight],[centerX,oCenterX]]
-      .forEach(([mine,theirs])=>{
-        const diff = Math.abs(mine-theirs);
-        if (diff <= SNAP_THRESHOLD && (!bestV || diff < bestV.diff)) bestV = { diff, guideX: theirs, delta: theirs-mine };
-      });
-    [[t,oTop],[t,oBottom],[t,oCenterY],[bottom,oTop],[bottom,oBottom],[bottom,oCenterY],[centerY,oTop],[centerY,oBottom],[centerY,oCenterY]]
-      .forEach(([mine,theirs])=>{
-        const diff = Math.abs(mine-theirs);
-        if (diff <= SNAP_THRESHOLD && (!bestH || diff < bestH.diff)) bestH = { diff, guideY: theirs, delta: theirs-mine };
-      });
+    // Check all vertical (x) alignment points
+    const verticalChecks = [
+      [l, oLeft], [l, oRight], [l, oCenterX],
+      [r, oLeft], [r, oRight], [r, oCenterX],
+      [cx, oLeft], [cx, oRight], [cx, oCenterX]
+    ];
+    verticalChecks.forEach(([mine, theirs]) => {
+      const diff = Math.abs(mine - theirs);
+      if (diff <= SNAP_THRESHOLD && (!bestVertical || diff < bestVertical.diff)) {
+        bestVertical = {
+          diff,
+          guideX: theirs,
+          delta: theirs - mine
+        };
+      }
+    });
+
+    // Check all horizontal (y) alignment points
+    const horizontalChecks = [
+      [t, oTop], [t, oBottom], [t, oCenterY],
+      [b, oTop], [b, oBottom], [b, oCenterY],
+      [cy, oTop], [cy, oBottom], [cy, oCenterY]
+    ];
+    horizontalChecks.forEach(([mine, theirs]) => {
+      const diff = Math.abs(mine - theirs);
+      if (diff <= SNAP_THRESHOLD && (!bestHorizontal || diff < bestHorizontal.diff)) {
+        bestHorizontal = {
+          diff,
+          guideY: theirs,
+          delta: theirs - mine
+        };
+      }
+    });
   });
 
   return {
-    left: l + (bestV ? bestV.delta : 0),
-    top: t + (bestH ? bestH.delta : 0),
-    guideX: bestV ? bestV.guideX : null,
-    guideY: bestH ? bestH.guideY : null
+    left: bestVertical ? l + bestVertical.delta : l,
+    top: bestHorizontal ? t + bestHorizontal.delta : t,
+    guideX: bestVertical ? bestVertical.guideX : null,
+    guideY: bestHorizontal ? bestHorizontal.guideY : null
   };
 }
-function showGuides(snap){
-  const gv = document.getElementById('guideV'), gh = document.getElementById('guideH');
-  if (snap.guideX !== null) { gv.style.left = snap.guideX + 'px'; gv.style.display = 'block'; } else { gv.style.display = 'none'; }
-  if (snap.guideY !== null) { gh.style.top = snap.guideY + 'px'; gh.style.display = 'block'; } else { gh.style.display = 'none'; }
+function showGuides(snap) {
+  const gv = document.getElementById('guideV');
+  const gh = document.getElementById('guideH');
+  
+  if (snap.guideX !== null) {
+    gv.style.left = snap.guideX + 'px';
+    gv.style.display = 'block';
+  } else {
+    gv.style.display = 'none';
+  }
+  
+  if (snap.guideY !== null) {
+    gh.style.top = snap.guideY + 'px';
+    gh.style.display = 'block';
+  } else {
+    gh.style.display = 'none';
+  }
 }
-function hideGuides(){
-  document.getElementById('guideV').style.display = 'none';
-  document.getElementById('guideH').style.display = 'none';
+function hideGuides() {
+  const gv = document.getElementById('guideV');
+  const gh = document.getElementById('guideH');
+  if (gv) gv.style.display = 'none';
+  if (gh) gh.style.display = 'none';
 }
 
 // ---------------- Selection + property panel ----------------
