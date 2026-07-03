@@ -1184,6 +1184,12 @@ function renderElement(el) {
   node.classList.add('dash-el');
 
   canvas.appendChild(node);
+  
+  // Render Lucide icon after node is added to DOM
+  if (el.type === 'icon' && window.lucide) {
+    window.lucide.createIcons();
+  }
+
   makeDraggable(node, handles, el);
   node.addEventListener('mousedown', (e) => { if (!e.target.classList.contains('resize-handle')) selectElement(el.id); });
   node.addEventListener('contextmenu', (e)=>{
