@@ -1679,7 +1679,7 @@ function renderTab(tab, id) {
         <div class="field">
           <div class="field-label">Border style</div>
           <select class="field-input" onchange="setMeta('${id}','borderStyle',this.value)">
-            ${borderStyles.map(s=>`<option value="${s}" ${((m.borderStyle||'solid')===s)?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+            ${borderStyles.map(s=>`<option value="${s}" ${((m.borderStyle||'none')===s)?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
           </select>
         </div>
         <div class="field">
