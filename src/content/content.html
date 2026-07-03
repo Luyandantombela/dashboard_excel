@@ -1199,6 +1199,11 @@ function redrawElement(el) {
   if (selectedId === el.id) {
     document.getElementById('node_' + el.id).classList.add('selected');
   }
+  
+  // Make sure Lucide icons are rendered!
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
 }
 
 function makeDraggable(node, handles, el) {
@@ -1938,6 +1943,12 @@ function selectIcon(iconName) {
   if (!elements[currentIconPickerId].meta) elements[currentIconPickerId].meta = {};
   elements[currentIconPickerId].meta.iconName = iconName;
   redrawElement(elements[currentIconPickerId]);
+  
+  // Render the new icon!
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+  
   pushHistory();
   closeIconPicker();
   if (panelEl) renderTab('appearance', currentIconPickerId);
