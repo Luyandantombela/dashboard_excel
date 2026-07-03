@@ -336,10 +336,6 @@ window.OverlayElements = (function () {
           boxShadow: m.shadowStyle === 'none' ? 'none' : (m.shadowStyle || '0 2px 8px rgba(0,0,0,0.15)')
         });
         node.innerHTML = `<i data-lucide="${iconName}" style="width: ${iconSize}px; height: ${iconSize}px;"></i>`;
-        // If lucide is available, render the icon
-        if (window.lucide) {
-          window.lucide.createIcons();
-        }
         break;
       }
       case 'text': {
