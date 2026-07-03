@@ -1199,11 +1199,6 @@ function redrawElement(el) {
   if (selectedId === el.id) {
     document.getElementById('node_' + el.id).classList.add('selected');
   }
-  
-  // Make sure Lucide icons are rendered!
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
 }
 
 function makeDraggable(node, handles, el) {
@@ -1228,7 +1223,7 @@ function makeDraggable(node, handles, el) {
     if (dragging) {
       const rawLeft = ox + (e.clientX - sx);
       const rawTop = oy + (e.clientY - sy);
-      const snap = computeSnap(el.id, rawLeft, rawTop, el.width, el.height, null); // null = moving whole element
+      const snap = computeSnap(el.id, rawLeft, rawTop, el.width, el.height);
       el.left = snap.left; el.top = snap.top;
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
@@ -1259,7 +1254,7 @@ function makeDraggable(node, handles, el) {
         newHeight = Math.max(20, oh + dy);
       }
 
-      const snap = computeSnap(el.id, newLeft, newTop, newWidth, newHeight, resizeHandleType);
+      const snap = computeSnap(el.id, newLeft, newTop, newWidth, newHeight);
       el.left = snap.left;
       el.top = snap.top;
       el.width = newWidth; // keep the resized width/height
@@ -1280,118 +1275,49 @@ function makeDraggable(node, handles, el) {
 }
 
 // ---------------- Alignment guides ----------------
-const SNAP_THRESHOLD = 8; // Figma-like threshold
-function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight, activeHandle) {
+const SNAP_THRESHOLD = 5;
+function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight){
   const l = currentLeft;
   const t = currentTop;
-  const w = currentWidth;
-  const h = currentHeight;
-  
-  const r = l + w;
-  const b = t + h;
-  const cx = l + w / 2;
-  const cy = t + h / 2;
+  const width = currentWidth;
+  const height = currentHeight;
 
-  let bestVertical = null; // for x-axis (vertical line)
-  let bestHorizontal = null; // for y-axis (horizontal line)
+  const right = l + width, bottom = t + height;
+  const centerX = l + width/2, centerY = t + height/2;
+  let bestV = null, bestH = null;
 
-  Object.values(elements).forEach(other => {
+  Object.values(elements).forEach(other=>{
     if (other.id === elId) return;
-    
-    const oLeft = other.left;
-    const oRight = other.left + other.width;
-    const oCenterX = other.left + other.width / 2;
-    const oTop = other.top;
-    const oBottom = other.top + other.height;
-    const oCenterY = other.top + other.height / 2;
+    const oLeft = other.left, oRight = other.left+other.width, oCenterX = other.left+other.width/2;
+    const oTop = other.top, oBottom = other.top+other.height, oCenterY = other.top+other.height/2;
 
-    // Determine which vertical (x) points to check
-    const verticalPoints = [];
-    if (!activeHandle) {
-      // Moving the entire element → check all points
-      verticalPoints.push(l, r, cx);
-    } else {
-      // Resizing → only check active handle side
-      if (activeHandle.includes('left')) verticalPoints.push(l);
-      if (activeHandle.includes('right')) verticalPoints.push(r);
-    }
-
-    // Determine which horizontal (y) points to check
-    const horizontalPoints = [];
-    if (!activeHandle) {
-      // Moving the entire element → check all points
-      horizontalPoints.push(t, b, cy);
-    } else {
-      // Resizing → only check active handle side
-      if (activeHandle.includes('top')) horizontalPoints.push(t);
-      if (activeHandle.includes('bottom')) horizontalPoints.push(b);
-    }
-
-    // Check selected vertical points
-    for (const mine of verticalPoints) {
-      const theirsCandidates = [oLeft, oRight, oCenterX];
-      for (const theirs of theirsCandidates) {
-        const diff = Math.abs(mine - theirs);
-        if (diff <= SNAP_THRESHOLD) {
-          if (!bestVertical || diff < bestVertical.diff) {
-            bestVertical = {
-              diff,
-              guideX: theirs,
-              delta: theirs - mine
-            };
-          }
-        }
-      }
-    }
-
-    // Check selected horizontal points
-    for (const mine of horizontalPoints) {
-      const theirsCandidates = [oTop, oBottom, oCenterY];
-      for (const theirs of theirsCandidates) {
-        const diff = Math.abs(mine - theirs);
-        if (diff <= SNAP_THRESHOLD) {
-          if (!bestHorizontal || diff < bestHorizontal.diff) {
-            bestHorizontal = {
-              diff,
-              guideY: theirs,
-              delta: theirs - mine
-            };
-          }
-        }
-      }
-    }
+    [[l,oLeft],[l,oRight],[l,oCenterX],[right,oLeft],[right,oRight],[right,oCenterX],[centerX,oLeft],[centerX,oRight],[centerX,oCenterX]]
+      .forEach(([mine,theirs])=>{
+        const diff = Math.abs(mine-theirs);
+        if (diff <= SNAP_THRESHOLD && (!bestV || diff < bestV.diff)) bestV = { diff, guideX: theirs, delta: theirs-mine };
+      });
+    [[t,oTop],[t,oBottom],[t,oCenterY],[bottom,oTop],[bottom,oBottom],[bottom,oCenterY],[centerY,oTop],[centerY,oBottom],[centerY,oCenterY]]
+      .forEach(([mine,theirs])=>{
+        const diff = Math.abs(mine-theirs);
+        if (diff <= SNAP_THRESHOLD && (!bestH || diff < bestH.diff)) bestH = { diff, guideY: theirs, delta: theirs-mine };
+      });
   });
 
   return {
-    left: bestVertical ? l + bestVertical.delta : l,
-    top: bestHorizontal ? t + bestHorizontal.delta : t,
-    guideX: bestVertical ? bestVertical.guideX : null,
-    guideY: bestHorizontal ? bestHorizontal.guideY : null
+    left: l + (bestV ? bestV.delta : 0),
+    top: t + (bestH ? bestH.delta : 0),
+    guideX: bestV ? bestV.guideX : null,
+    guideY: bestH ? bestH.guideY : null
   };
 }
-function showGuides(snap) {
-  const gv = document.getElementById('guideV');
-  const gh = document.getElementById('guideH');
-  
-  if (snap.guideX !== null) {
-    gv.style.left = snap.guideX + 'px';
-    gv.style.display = 'block';
-  } else {
-    gv.style.display = 'none';
-  }
-  
-  if (snap.guideY !== null) {
-    gh.style.top = snap.guideY + 'px';
-    gh.style.display = 'block';
-  } else {
-    gh.style.display = 'none';
-  }
+function showGuides(snap){
+  const gv = document.getElementById('guideV'), gh = document.getElementById('guideH');
+  if (snap.guideX !== null) { gv.style.left = snap.guideX + 'px'; gv.style.display = 'block'; } else { gv.style.display = 'none'; }
+  if (snap.guideY !== null) { gh.style.top = snap.guideY + 'px'; gh.style.display = 'block'; } else { gh.style.display = 'none'; }
 }
-function hideGuides() {
-  const gv = document.getElementById('guideV');
-  const gh = document.getElementById('guideH');
-  if (gv) gv.style.display = 'none';
-  if (gh) gh.style.display = 'none';
+function hideGuides(){
+  document.getElementById('guideV').style.display = 'none';
+  document.getElementById('guideH').style.display = 'none';
 }
 
 // ---------------- Selection + property panel ----------------
@@ -1483,7 +1409,6 @@ function closePanel(){ if(panelEl) panelEl.remove(); panelEl=null; document.quer
 
 function renderTab(tab, id) {
   const el = elements[id];
-  if (!el) return;
   const body = document.getElementById('propBody');
   if (tab === 'appearance' && el.type === 'text') {
     const m = el.meta || {};
@@ -1891,33 +1816,11 @@ function openIconPicker(id) {
   currentIconPickerId = id;
   const el = elements[id];
   const m = el.meta || {};
-  const iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
+  let iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
   
-  // Filter to only valid icons
-  const invalidIcons = [];
-  const validIcons = iconList.filter(iconName => {
-    try {
-      // Check if Lucide has this icon - try creating a temporary element
-      const tempEl = document.createElement('i');
-      tempEl.setAttribute('data-lucide', iconName);
-      if (window.lucide) {
-        window.lucide.createIcons(tempEl);
-        // If the icon was rendered, it has children
-        if (tempEl.children.length > 0) {
-          return true;
-        }
-      }
-      invalidIcons.push(iconName);
-      return false;
-    } catch (e) {
-      invalidIcons.push(iconName);
-      return false;
-    }
-  });
-  
-  if (invalidIcons.length > 0) {
-    console.log('Invalid icons found:', invalidIcons);
-  }
+  // Remove known invalid icons
+  const invalidIcons = ['pulse', 'cash', 'equals', 'not-equals', 'greater-than', 'less-than', 'stop', 'sync', 'fire', 'user-unlock', 'screwdriver', 'printer-off', 'shield-heart', 'shield-star'];
+  iconList = iconList.filter(icon => !invalidIcons.includes(icon));
   
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'icon-picker-modal-overlay';
@@ -1930,7 +1833,7 @@ function openIconPicker(id) {
       </div>
       <input type="text" class="icon-picker-modal-search" id="iconSearch" placeholder="Search icons..." oninput="filterIcons()">
       <div class="icon-picker-modal-grid" id="iconModalGrid">
-        ${validIcons.map(iconName => `
+        ${iconList.map(iconName => `
           <div class="icon-picker-modal-item ${(m.iconName||'zap')===iconName?'active':''}" data-icon="${iconName}" onclick="selectIcon('${iconName}')">
             <i data-lucide="${iconName}"></i>
           </div>
@@ -1953,10 +1856,14 @@ function openIconPicker(id) {
 function filterIcons() {
   const searchText = document.getElementById('iconSearch').value.toLowerCase();
   const items = document.querySelectorAll('.icon-picker-modal-item');
+  let iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
+  // Remove known invalid icons
+  const invalidIcons = ['pulse', 'cash', 'equals', 'not-equals', 'greater-than', 'less-than', 'stop', 'sync', 'fire', 'user-unlock', 'screwdriver', 'printer-off', 'shield-heart', 'shield-star'];
+  iconList = iconList.filter(icon => !invalidIcons.includes(icon));
   
-  items.forEach((item) => {
-    const iconName = item.dataset.icon;
-    if (iconName.toLowerCase().includes(searchText)) {
+  items.forEach((item, index) => {
+    const iconName = iconList[index];
+    if (iconName && iconName.toLowerCase().includes(searchText)) {
       item.style.display = 'flex';
     } else {
       item.style.display = 'none';
@@ -1969,12 +1876,6 @@ function selectIcon(iconName) {
   if (!elements[currentIconPickerId].meta) elements[currentIconPickerId].meta = {};
   elements[currentIconPickerId].meta.iconName = iconName;
   redrawElement(elements[currentIconPickerId]);
-  
-  // Render the new icon!
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
-  
   pushHistory();
   closeIconPicker();
   if (panelEl) renderTab('appearance', currentIconPickerId);
