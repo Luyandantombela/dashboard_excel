@@ -1287,10 +1287,8 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
   const cx = l + w / 2;
   const cy = t + h / 2;
 
-  console.log("computeSnap called with:", { elId, l, t, w, h });
-
-  let verticalGuide = null; // for x-axis (vertical line)
-  let horizontalGuide = null; // for y-axis (horizontal line)
+  let bestVertical = null; // for x-axis (vertical line)
+  let bestHorizontal = null; // for y-axis (horizontal line)
 
   Object.values(elements).forEach(other => {
     if (other.id === elId) return;
@@ -1302,61 +1300,51 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
     const oBottom = other.top + other.height;
     const oCenterY = other.top + other.height / 2;
 
-    console.log("Checking against element:", { oLeft, oRight, oTop, oBottom });
-
     // Check all vertical (x) alignment points
-    if (!verticalGuide) {
-      const verticalChecks = [
-        [l, oLeft, "left-left"], [l, oRight, "left-right"], [l, oCenterX, "left-centerX"],
-        [r, oLeft, "right-left"], [r, oRight, "right-right"], [r, oCenterX, "right-centerX"],
-        [cx, oLeft, "centerX-left"], [cx, oRight, "centerX-right"], [cx, oCenterX, "centerX-centerX"]
-      ];
-      for (const [mine, theirs, label] of verticalChecks) {
-        const diff = Math.abs(mine - theirs);
-        console.log("Vertical check:", label, { mine, theirs, diff });
-        if (diff <= SNAP_THRESHOLD) {
-          console.log("Found vertical guide!", { theirs, diff });
-          verticalGuide = {
+    const verticalChecks = [
+      [l, oLeft], [l, oRight], [l, oCenterX],
+      [r, oLeft], [r, oRight], [r, oCenterX],
+      [cx, oLeft], [cx, oRight], [cx, oCenterX]
+    ];
+    for (const [mine, theirs] of verticalChecks) {
+      const diff = Math.abs(mine - theirs);
+      if (diff <= SNAP_THRESHOLD) {
+        if (!bestVertical || diff < bestVertical.diff) {
+          bestVertical = {
+            diff,
             guideX: theirs,
             delta: theirs - mine
           };
-          break;
         }
       }
     }
 
     // Check all horizontal (y) alignment points
-    if (!horizontalGuide) {
-      const horizontalChecks = [
-        [t, oTop, "top-top"], [t, oBottom, "top-bottom"], [t, oCenterY, "top-centerY"],
-        [b, oTop, "bottom-top"], [b, oBottom, "bottom-bottom"], [b, oCenterY, "bottom-centerY"],
-        [cy, oTop, "centerY-top"], [cy, oBottom, "centerY-bottom"], [cy, oCenterY, "centerY-centerY"]
-      ];
-      for (const [mine, theirs, label] of horizontalChecks) {
-        const diff = Math.abs(mine - theirs);
-        console.log("Horizontal check:", label, { mine, theirs, diff });
-        if (diff <= SNAP_THRESHOLD) {
-          console.log("Found horizontal guide!", { theirs, diff });
-          horizontalGuide = {
+    const horizontalChecks = [
+      [t, oTop], [t, oBottom], [t, oCenterY],
+      [b, oTop], [b, oBottom], [b, oCenterY],
+      [cy, oTop], [cy, oBottom], [cy, oCenterY]
+    ];
+    for (const [mine, theirs] of horizontalChecks) {
+      const diff = Math.abs(mine - theirs);
+      if (diff <= SNAP_THRESHOLD) {
+        if (!bestHorizontal || diff < bestHorizontal.diff) {
+          bestHorizontal = {
+            diff,
             guideY: theirs,
             delta: theirs - mine
           };
-          break;
         }
       }
     }
   });
 
-  const result = {
-    left: verticalGuide ? l + verticalGuide.delta : l,
-    top: horizontalGuide ? t + horizontalGuide.delta : t,
-    guideX: verticalGuide ? verticalGuide.guideX : null,
-    guideY: horizontalGuide ? horizontalGuide.guideY : null
+  return {
+    left: bestVertical ? l + bestVertical.delta : l,
+    top: bestHorizontal ? t + bestHorizontal.delta : t,
+    guideX: bestVertical ? bestVertical.guideX : null,
+    guideY: bestHorizontal ? bestHorizontal.guideY : null
   };
-  
-  console.log("computeSnap result:", result);
-
-  return result;
 }
 function showGuides(snap) {
   const gv = document.getElementById('guideV');
