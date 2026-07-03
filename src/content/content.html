@@ -1254,6 +1254,9 @@ function makeDraggable(node, handles, el) {
         newHeight = Math.max(20, oh + dy);
       }
 
+      console.log("RESIZE DEBUG: newLeft =", newLeft, "newTop =", newTop, "newWidth =", newWidth, "newHeight =", newHeight);
+      console.log("RESIZE DEBUG: newBottom =", newTop + newHeight);
+
       const snap = computeSnap(el.id, newLeft, newTop, newWidth, newHeight);
       el.left = snap.left;
       el.top = snap.top;
@@ -1287,6 +1290,8 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
   const cx = l + w / 2;
   const cy = t + h / 2;
 
+  console.log("computeSnap DEBUG: l =", l, "t =", t, "r =", r, "b =", b, "cx =", cx, "cy =", cy);
+
   let bestVertical = null; // for x-axis (vertical line)
   let bestHorizontal = null; // for y-axis (horizontal line)
 
@@ -1300,6 +1305,8 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
     const oBottom = other.top + other.height;
     const oCenterY = other.top + other.height / 2;
 
+    console.log("computeSnap DEBUG: checking other element oLeft =", oLeft, "oRight =", oRight, "oTop =", oTop, "oBottom =", oBottom);
+
     // Check all vertical (x) alignment points
     const verticalChecks = [
       [l, oLeft], [l, oRight], [l, oCenterX],
@@ -1309,6 +1316,7 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
     for (const [mine, theirs] of verticalChecks) {
       const diff = Math.abs(mine - theirs);
       if (diff <= SNAP_THRESHOLD) {
+        console.log("computeSnap DEBUG: FOUND vertical match! mine =", mine, "theirs =", theirs, "diff =", diff);
         if (!bestVertical || diff < bestVertical.diff) {
           bestVertical = {
             diff,
@@ -1328,6 +1336,7 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
     for (const [mine, theirs] of horizontalChecks) {
       const diff = Math.abs(mine - theirs);
       if (diff <= SNAP_THRESHOLD) {
+        console.log("computeSnap DEBUG: FOUND horizontal match! mine =", mine, "theirs =", theirs, "diff =", diff);
         if (!bestHorizontal || diff < bestHorizontal.diff) {
           bestHorizontal = {
             diff,
@@ -1339,12 +1348,16 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
     }
   });
 
-  return {
+  const result = {
     left: bestVertical ? l + bestVertical.delta : l,
     top: bestHorizontal ? t + bestHorizontal.delta : t,
     guideX: bestVertical ? bestVertical.guideX : null,
     guideY: bestHorizontal ? bestHorizontal.guideY : null
   };
+
+  console.log("computeSnap DEBUG: returning result =", result);
+
+  return result;
 }
 function showGuides(snap) {
   const gv = document.getElementById('guideV');
