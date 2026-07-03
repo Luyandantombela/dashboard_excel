@@ -593,7 +593,7 @@ function renderLayersList(){
   const listEl = document.getElementById('layersList');
   if (!listEl) return;
   const items = Object.values(elements)
-    .map(el => ({ el, z: parseInt((document.getElementById('node_'+el.id)||{}).style && document.getElementById('node_'+el.id).style.zIndex || 0, 10) }))
+    .map(el => ({ el, z: el.z || 0 }))
     .sort((a,b) => b.z - a.z);
   if (!items.length){
     listEl.innerHTML = '<div class="layers-empty">No elements yet. Add one from the Elements tab and it\'ll show up here.</div>';
@@ -1099,18 +1099,40 @@ function showContextMenu(x, y, id){
   menu.style.top = y + 'px';
   menu.innerHTML = `
     <div class="ctx-item" onclick="duplicateElement('${id}')">Duplicate</div>
+    <div class="ctx-item" onclick="bringToFront('${id}')">Bring to Front</div>
+    <div class="ctx-item" onclick="sendToBack('${id}')">Send to Back</div>
     <div class="ctx-item danger" onclick="deleteElement('${id}')">Delete</div>
   `;
   document.body.appendChild(menu);
   setTimeout(()=>{ document.addEventListener('mousedown', removeContextMenu, { once:true }); }, 0);
 }
 function removeContextMenu(){ const m = document.getElementById('ctxMenu'); if (m) m.remove(); }
+
+// ---------------- Explicit stacking-order control ----------------
+// These are the ONLY actions that should change an element's z. Selecting,
+// editing appearance/data, dragging, or resizing must never touch z.
+function bringToFront(id){
+  removeContextMenu();
+  elements[id].z = zTop++;
+  redrawElement(elements[id]);
+  renderLayersList();
+  pushHistory();
+}
+function sendToBack(id){
+  removeContextMenu();
+  const minZ = Math.min(0, ...Object.values(elements).map(e => e.z || 0));
+  elements[id].z = minZ - 1;
+  redrawElement(elements[id]);
+  renderLayersList();
+  pushHistory();
+}
 function duplicateElement(id){
   removeContextMenu();
   const copy = JSON.parse(JSON.stringify(elements[id]));
   copy.id = 'el_' + Math.random().toString(36).slice(2, 9);
   copy.left += 16; copy.top += 16;
   copy.name = nextDefaultName(copy.type);
+  copy.z = zTop++; // duplicate always lands above its source, not stuck at source's old layer
   elements[copy.id] = copy;
   renderElement(copy);
   selectElement(copy.id);
@@ -1134,7 +1156,12 @@ function addElement(type) {
 function renderElement(el) {
   const node = OverlayElements.buildNode(el);
   node.id = 'node_' + el.id;
-  node.style.zIndex = zTop++;
+  // z is a persistent property on the element's data, assigned once.
+  // Re-rendering (e.g. after an edit) must NEVER bump stacking order —
+  // only explicit actions (new element, duplicate, bring-to-front/send-to-back) change it.
+  if (el.z === undefined || el.z === null) el.z = zTop++;
+  if (el.z >= zTop) zTop = el.z + 1;
+  node.style.zIndex = el.z;
 
   const handle = document.createElement('div');
   handle.className = 'resize-handle';
