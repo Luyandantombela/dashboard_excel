@@ -1478,6 +1478,7 @@ function closePanel(){ if(panelEl) panelEl.remove(); panelEl=null; document.quer
 
 function renderTab(tab, id) {
   const el = elements[id];
+  if (!el) return;
   const body = document.getElementById('propBody');
   if (tab === 'appearance' && el.type === 'text') {
     const m = el.meta || {};
@@ -1921,10 +1922,9 @@ function openIconPicker(id) {
 function filterIcons() {
   const searchText = document.getElementById('iconSearch').value.toLowerCase();
   const items = document.querySelectorAll('.icon-picker-modal-item');
-  const iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
   
-  items.forEach((item, index) => {
-    const iconName = iconList[index];
+  items.forEach((item) => {
+    const iconName = item.dataset.icon;
     if (iconName.toLowerCase().includes(searchText)) {
       item.style.display = 'flex';
     } else {
