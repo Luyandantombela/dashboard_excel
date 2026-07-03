@@ -33,7 +33,7 @@
   .body-row{flex:1;display:flex;min-height:0;}
 
   .rail{width:200px;background:var(--ink-soft);border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;display:flex;flex-direction:column;}
-  .rail-scroll{flex:1;overflow-y:auto;padding:10px 8px;}
+  .rail-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 8px;}
   .rail-scroll::-webkit-scrollbar{width:5px;}
   .rail-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
   .group-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.32);padding:10px 6px 6px 6px;}
@@ -318,22 +318,26 @@
   
   .view-toggle {
     display: flex;
-    gap: 4px;
+    gap: 3px;
     padding: 0 6px 8px 6px;
   }
   
   .view-toggle-btn {
     flex: 1;
-    padding: 6px 10px;
+    min-width: 0;
+    padding: 6px 2px;
     border-radius: 6px;
     background: rgba(255,255,255,0.05);
     border: none;
     color: rgba(255,255,255,0.6);
-    font-size: 11px;
+    font-size: 9.5px;
     font-weight: 600;
     cursor: pointer;
     font-family: 'Inter', sans-serif;
     transition: all 0.12s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .view-toggle-btn.active {
@@ -461,7 +465,7 @@
         </div>
         
         <!-- Elements View -->
-        <div id="elementsView" class="element-picker-view active">
+        <div id="elementsView" class="chart-picker-view active">
           <div class="group-label" style="padding-top:0;">Visual</div>
           <div class="element-grid">
             <div class="element-chip" onclick="addElement('button')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/></svg><span class="element-chip-label">Button</span></div>
@@ -1163,6 +1167,7 @@ function makeDraggable(node, handle, el) {
     if (e.button !== 0) return; // ignore right-click, handled by contextmenu
     if (e.target === handle) {
       resizing = true; sx=e.clientX; sy=e.clientY; ow=el.width; oh=el.height;
+      node.style.zIndex = zTop++;
       e.stopPropagation(); e.preventDefault(); return;
     }
     dragging = true; sx=e.clientX; sy=e.clientY; ox=el.left; oy=el.top;
