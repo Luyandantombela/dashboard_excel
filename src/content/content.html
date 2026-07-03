@@ -610,8 +610,6 @@ function renderLayersList(){
     row.addEventListener('click', (e) => {
       if (e.target.classList.contains('layer-name') && e.detail === 2) return; // handled by dblclick
       selectElement(id);
-      const node = document.getElementById('node_'+id);
-      if (node) { node.style.zIndex = zTop++; }
     });
     const nameSpan = row.querySelector('.layer-name');
     nameSpan.addEventListener('dblclick', (e) => {
@@ -1167,11 +1165,9 @@ function makeDraggable(node, handle, el) {
     if (e.button !== 0) return; // ignore right-click, handled by contextmenu
     if (e.target === handle) {
       resizing = true; sx=e.clientX; sy=e.clientY; ow=el.width; oh=el.height;
-      node.style.zIndex = zTop++;
       e.stopPropagation(); e.preventDefault(); return;
     }
     dragging = true; sx=e.clientX; sy=e.clientY; ox=el.left; oy=el.top;
-    node.style.zIndex = zTop++;
     e.preventDefault();
   });
   document.addEventListener('mousemove', (e)=>{
