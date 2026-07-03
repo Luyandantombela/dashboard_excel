@@ -1893,6 +1893,32 @@ function openIconPicker(id) {
   const m = el.meta || {};
   const iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
   
+  // Filter to only valid icons
+  const invalidIcons = [];
+  const validIcons = iconList.filter(iconName => {
+    try {
+      // Check if Lucide has this icon - try creating a temporary element
+      const tempEl = document.createElement('i');
+      tempEl.setAttribute('data-lucide', iconName);
+      if (window.lucide) {
+        window.lucide.createIcons(tempEl);
+        // If the icon was rendered, it has children
+        if (tempEl.children.length > 0) {
+          return true;
+        }
+      }
+      invalidIcons.push(iconName);
+      return false;
+    } catch (e) {
+      invalidIcons.push(iconName);
+      return false;
+    }
+  });
+  
+  if (invalidIcons.length > 0) {
+    console.log('Invalid icons found:', invalidIcons);
+  }
+  
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'icon-picker-modal-overlay';
   modalOverlay.id = 'iconPickerModal';
@@ -1904,7 +1930,7 @@ function openIconPicker(id) {
       </div>
       <input type="text" class="icon-picker-modal-search" id="iconSearch" placeholder="Search icons..." oninput="filterIcons()">
       <div class="icon-picker-modal-grid" id="iconModalGrid">
-        ${iconList.map(iconName => `
+        ${validIcons.map(iconName => `
           <div class="icon-picker-modal-item ${(m.iconName||'zap')===iconName?'active':''}" data-icon="${iconName}" onclick="selectIcon('${iconName}')">
             <i data-lucide="${iconName}"></i>
           </div>
