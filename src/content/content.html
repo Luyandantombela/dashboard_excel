@@ -1223,7 +1223,7 @@ function makeDraggable(node, handles, el) {
     if (dragging) {
       const rawLeft = ox + (e.clientX - sx);
       const rawTop = oy + (e.clientY - sy);
-      const snap = computeSnap(el, rawLeft, rawTop, null, null, null, null);
+      const snap = computeSnap(el.id, rawLeft, rawTop, el.width, el.height);
       el.left = snap.left; el.top = snap.top;
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
@@ -1254,13 +1254,11 @@ function makeDraggable(node, handles, el) {
         newHeight = Math.max(20, oh + dy);
       }
 
-      // Create a temporary element object for computeSnap
-      const tempEl = { id: el.id, left: newLeft, top: newTop, width: newWidth, height: newHeight };
-      const snap = computeSnap(tempEl, newLeft, newTop, newLeft, newTop, newWidth, newHeight);
+      const snap = computeSnap(el.id, newLeft, newTop, newWidth, newHeight);
       el.left = snap.left;
       el.top = snap.top;
-      el.width = snap.width !== null ? snap.width : newWidth;
-      el.height = snap.height !== null ? snap.height : newHeight;
+      el.width = newWidth; // keep the resized width/height
+      el.height = newHeight;
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
       node.style.width = el.width + 'px';
@@ -1278,19 +1276,18 @@ function makeDraggable(node, handles, el) {
 
 // ---------------- Alignment guides ----------------
 const SNAP_THRESHOLD = 5;
-function computeSnap(el, left, top, newLeft, newTop, newWidth, newHeight){
-  const width = (newWidth !== null && newWidth !== undefined) ? newWidth : el.width;
-  const height = (newHeight !== null && newHeight !== undefined) ? newHeight : el.height;
-  const l = (newLeft !== null && newLeft !== undefined) ? newLeft : left;
-  const t = (newTop !== null && newTop !== undefined) ? newTop : top;
+function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight){
+  const l = currentLeft;
+  const t = currentTop;
+  const width = currentWidth;
+  const height = currentHeight;
 
   const right = l + width, bottom = t + height;
   const centerX = l + width/2, centerY = t + height/2;
   let bestV = null, bestH = null;
-  let deltaWidth = null, deltaHeight = null;
 
   Object.values(elements).forEach(other=>{
-    if (other.id === el.id) return;
+    if (other.id === elId) return;
     const oLeft = other.left, oRight = other.left+other.width, oCenterX = other.left+other.width/2;
     const oTop = other.top, oBottom = other.top+other.height, oCenterY = other.top+other.height/2;
 
@@ -1309,8 +1306,6 @@ function computeSnap(el, left, top, newLeft, newTop, newWidth, newHeight){
   return {
     left: l + (bestV ? bestV.delta : 0),
     top: t + (bestH ? bestH.delta : 0),
-    width: deltaWidth,
-    height: deltaHeight,
     guideX: bestV ? bestV.guideX : null,
     guideY: bestH ? bestH.guideY : null
   };
