@@ -1223,7 +1223,7 @@ function makeDraggable(node, handles, el) {
     if (dragging) {
       const rawLeft = ox + (e.clientX - sx);
       const rawTop = oy + (e.clientY - sy);
-      const snap = computeSnap(el.id, rawLeft, rawTop, el.width, el.height);
+      const snap = computeSnap(el.id, rawLeft, rawTop, el.width, el.height, null); // null = moving whole element
       el.left = snap.left; el.top = snap.top;
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
@@ -1254,10 +1254,7 @@ function makeDraggable(node, handles, el) {
         newHeight = Math.max(20, oh + dy);
       }
 
-      console.log("RESIZE DEBUG: newLeft =", newLeft, "newTop =", newTop, "newWidth =", newWidth, "newHeight =", newHeight);
-      console.log("RESIZE DEBUG: newBottom =", newTop + newHeight);
-
-      const snap = computeSnap(el.id, newLeft, newTop, newWidth, newHeight);
+      const snap = computeSnap(el.id, newLeft, newTop, newWidth, newHeight, resizeHandleType);
       el.left = snap.left;
       el.top = snap.top;
       el.width = newWidth; // keep the resized width/height
@@ -1279,7 +1276,7 @@ function makeDraggable(node, handles, el) {
 
 // ---------------- Alignment guides ----------------
 const SNAP_THRESHOLD = 8; // Figma-like threshold
-function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight) {
+function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight, activeHandle) {
   const l = currentLeft;
   const t = currentTop;
   const w = currentWidth;
@@ -1289,8 +1286,6 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
   const b = t + h;
   const cx = l + w / 2;
   const cy = t + h / 2;
-
-  console.log("computeSnap DEBUG: l =", l, "t =", t, "r =", r, "b =", b, "cx =", cx, "cy =", cy);
 
   let bestVertical = null; // for x-axis (vertical line)
   let bestHorizontal = null; // for y-axis (horizontal line)
@@ -1305,59 +1300,69 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
     const oBottom = other.top + other.height;
     const oCenterY = other.top + other.height / 2;
 
-    console.log("computeSnap DEBUG: checking other element oLeft =", oLeft, "oRight =", oRight, "oTop =", oTop, "oBottom =", oBottom);
+    // Determine which vertical (x) points to check
+    const verticalPoints = [];
+    if (!activeHandle) {
+      // Moving the entire element → check all points
+      verticalPoints.push(l, r, cx);
+    } else {
+      // Resizing → only check active handle side
+      if (activeHandle.includes('left')) verticalPoints.push(l);
+      if (activeHandle.includes('right')) verticalPoints.push(r);
+    }
 
-    // Check all vertical (x) alignment points
-    const verticalChecks = [
-      [l, oLeft], [l, oRight], [l, oCenterX],
-      [r, oLeft], [r, oRight], [r, oCenterX],
-      [cx, oLeft], [cx, oRight], [cx, oCenterX]
-    ];
-    for (const [mine, theirs] of verticalChecks) {
-      const diff = Math.abs(mine - theirs);
-      if (diff <= SNAP_THRESHOLD) {
-        console.log("computeSnap DEBUG: FOUND vertical match! mine =", mine, "theirs =", theirs, "diff =", diff);
-        if (!bestVertical || diff < bestVertical.diff) {
-          bestVertical = {
-            diff,
-            guideX: theirs,
-            delta: theirs - mine
-          };
+    // Determine which horizontal (y) points to check
+    const horizontalPoints = [];
+    if (!activeHandle) {
+      // Moving the entire element → check all points
+      horizontalPoints.push(t, b, cy);
+    } else {
+      // Resizing → only check active handle side
+      if (activeHandle.includes('top')) horizontalPoints.push(t);
+      if (activeHandle.includes('bottom')) horizontalPoints.push(b);
+    }
+
+    // Check selected vertical points
+    for (const mine of verticalPoints) {
+      const theirsCandidates = [oLeft, oRight, oCenterX];
+      for (const theirs of theirsCandidates) {
+        const diff = Math.abs(mine - theirs);
+        if (diff <= SNAP_THRESHOLD) {
+          if (!bestVertical || diff < bestVertical.diff) {
+            bestVertical = {
+              diff,
+              guideX: theirs,
+              delta: theirs - mine
+            };
+          }
         }
       }
     }
 
-    // Check all horizontal (y) alignment points
-    const horizontalChecks = [
-      [t, oTop], [t, oBottom], [t, oCenterY],
-      [b, oTop], [b, oBottom], [b, oCenterY],
-      [cy, oTop], [cy, oBottom], [cy, oCenterY]
-    ];
-    for (const [mine, theirs] of horizontalChecks) {
-      const diff = Math.abs(mine - theirs);
-      if (diff <= SNAP_THRESHOLD) {
-        console.log("computeSnap DEBUG: FOUND horizontal match! mine =", mine, "theirs =", theirs, "diff =", diff);
-        if (!bestHorizontal || diff < bestHorizontal.diff) {
-          bestHorizontal = {
-            diff,
-            guideY: theirs,
-            delta: theirs - mine
-          };
+    // Check selected horizontal points
+    for (const mine of horizontalPoints) {
+      const theirsCandidates = [oTop, oBottom, oCenterY];
+      for (const theirs of theirsCandidates) {
+        const diff = Math.abs(mine - theirs);
+        if (diff <= SNAP_THRESHOLD) {
+          if (!bestHorizontal || diff < bestHorizontal.diff) {
+            bestHorizontal = {
+              diff,
+              guideY: theirs,
+              delta: theirs - mine
+            };
+          }
         }
       }
     }
   });
 
-  const result = {
+  return {
     left: bestVertical ? l + bestVertical.delta : l,
     top: bestHorizontal ? t + bestHorizontal.delta : t,
     guideX: bestVertical ? bestVertical.guideX : null,
     guideY: bestHorizontal ? bestHorizontal.guideY : null
   };
-
-  console.log("computeSnap DEBUG: returning result =", result);
-
-  return result;
 }
 function showGuides(snap) {
   const gv = document.getElementById('guideV');
