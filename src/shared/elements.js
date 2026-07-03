@@ -41,7 +41,7 @@ window.OverlayElements = (function () {
 
   const DEFAULTS = {
     button:   { w:120, h:40,  label:'Refresh view' },
-    icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24 } },
+    icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24, borderStyle: 'none', shadowStyle: 'none' } },
     image:    { w:160, h:110, label:'Image' },
     text:     { w:180, h:28,  label:'Section title' },
     shape:    { w:90,  h:90,  label:'' },
@@ -319,7 +319,7 @@ window.OverlayElements = (function () {
         const iconSize = m.iconSize || 24;
         const iconColor = el.fill || '#12181F';
         const bgColor = m.bg || 'transparent';
-        const borderStyle = m.borderStyle || 'solid';
+        const borderStyle = m.borderStyle || 'none';
         const borderRadius = m.radius != null ? m.radius : 8;
         const borderWidth = m.borderWidth || 1.5;
         const borderColor = m.borderColor || '#12181F';
