@@ -50,8 +50,16 @@
 
   .dash-el{cursor:move;transition:box-shadow .12s ease;}
   .dash-el.selected{box-shadow:0 0 0 2px var(--emerald), 0 0 0 5px var(--emerald-soft);}
-  .resize-handle{position:absolute;width:10px;height:10px;right:-5px;bottom:-5px;background:var(--emerald);border:2px solid #fff;border-radius:3px;cursor:nwse-resize;display:none;z-index:5;}
+  .resize-handle{position:absolute;width:10px;height:10px;background:var(--emerald);border:2px solid #fff;border-radius:3px;display:none;z-index:5;}
   .dash-el.selected .resize-handle{display:block;}
+  .resize-handle.top-left{top:-5px;left:-5px;cursor:nwse-resize;}
+  .resize-handle.top{top:-5px;left:50%;transform:translateX(-50%);cursor:ns-resize;}
+  .resize-handle.top-right{top:-5px;right:-5px;cursor:nesw-resize;}
+  .resize-handle.right{right:-5px;top:50%;transform:translateY(-50%);cursor:ew-resize;}
+  .resize-handle.bottom-right{bottom:-5px;right:-5px;cursor:nwse-resize;}
+  .resize-handle.bottom{bottom:-5px;left:50%;transform:translateX(-50%);cursor:ns-resize;}
+  .resize-handle.bottom-left{bottom:-5px;left:-5px;cursor:nesw-resize;}
+  .resize-handle.left{left:-5px;top:50%;transform:translateY(-50%);cursor:ew-resize;}
 
   .prop-panel{position:absolute;width:270px;background:var(--panel);border-radius:12px;box-shadow:var(--shadow-lg);border:1px solid var(--line);z-index:9000;overflow:hidden;}
   .prop-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink);cursor:grab;}
@@ -1163,14 +1171,21 @@ function renderElement(el) {
   if (el.z >= zTop) zTop = el.z + 1;
   node.style.zIndex = el.z;
 
-  const handle = document.createElement('div');
-  handle.className = 'resize-handle';
-  node.appendChild(handle);
+  // Add all 8 resize handles
+  const handleTypes = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
+  const handles = [];
+  handleTypes.forEach(type => {
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle ' + type;
+    handle.dataset.handleType = type;
+    node.appendChild(handle);
+    handles.push(handle);
+  });
   node.classList.add('dash-el');
 
   canvas.appendChild(node);
-  makeDraggable(node, handle, el);
-  node.addEventListener('mousedown', () => selectElement(el.id));
+  makeDraggable(node, handles, el);
+  node.addEventListener('mousedown', (e) => { if (!e.target.classList.contains('resize-handle')) selectElement(el.id); });
   node.addEventListener('contextmenu', (e)=>{
     e.preventDefault(); e.stopPropagation();
     showContextMenu(e.clientX, e.clientY, el.id);
@@ -1186,60 +1201,98 @@ function redrawElement(el) {
   }
 }
 
-function makeDraggable(node, handle, el) {
-  let dragging=false, resizing=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0;
+function makeDraggable(node, handles, el) {
+  let dragging=false, resizing=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0, resizeHandleType=null;
   node.addEventListener('mousedown', (e)=>{
     if (e.button !== 0) return; // ignore right-click, handled by contextmenu
-    if (e.target === handle) {
-      resizing = true; sx=e.clientX; sy=e.clientY; ow=el.width; oh=el.height;
-      e.stopPropagation(); e.preventDefault(); return;
+    const isResizeHandle = e.target.classList.contains('resize-handle');
+    if (isResizeHandle) {
+      resizing = true;
+      resizeHandleType = e.target.dataset.handleType;
+      sx=e.clientX; sy=e.clientY;
+      ox=el.left; oy=el.top; ow=el.width; oh=el.height;
+      e.stopPropagation(); e.preventDefault();
+      return;
     }
-    dragging = true; sx=e.clientX; sy=e.clientY; ox=el.left; oy=el.top;
+    dragging = true;
+    sx=e.clientX; sy=e.clientY;
+    ox=el.left; oy=el.top;
     e.preventDefault();
   });
   document.addEventListener('mousemove', (e)=>{
     if (dragging) {
       const rawLeft = ox + (e.clientX - sx);
       const rawTop = oy + (e.clientY - sy);
-      const snap = computeSnap(el, rawLeft, rawTop);
+      const snap = computeSnap(el, rawLeft, rawTop, null, null, null, null);
       el.left = snap.left; el.top = snap.top;
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
       showGuides(snap);
     } else if (resizing) {
-      el.width = Math.max(24, ow + (e.clientX - sx));
-      el.height = Math.max(20, oh + (e.clientY - sy));
+      let newLeft = ox, newTop = oy, newWidth = ow, newHeight = oh;
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+
+      if (resizeHandleType.includes('left')) {
+        newLeft = ox + dx;
+        newWidth = Math.max(24, ow - dx);
+      } else if (resizeHandleType.includes('right')) {
+        newWidth = Math.max(24, ow + dx);
+      }
+
+      if (resizeHandleType.includes('top')) {
+        newTop = oy + dy;
+        newHeight = Math.max(20, oh - dy);
+      } else if (resizeHandleType.includes('bottom')) {
+        newHeight = Math.max(20, oh + dy);
+      }
+
+      // Create a temporary element object for computeSnap
+      const tempEl = { id: el.id, left: newLeft, top: newTop, width: newWidth, height: newHeight };
+      const snap = computeSnap(tempEl, newLeft, newTop, newLeft, newTop, newWidth, newHeight);
+      el.left = snap.left;
+      el.top = snap.top;
+      el.width = snap.width !== null ? snap.width : newWidth;
+      el.height = snap.height !== null ? snap.height : newHeight;
+      node.style.left = el.left + 'px';
+      node.style.top = el.top + 'px';
       node.style.width = el.width + 'px';
       node.style.height = el.height + 'px';
+      showGuides(snap);
     }
   });
   document.addEventListener('mouseup', ()=>{
     if (dragging && (el.left !== ox || el.top !== oy)) pushHistory();
-    if (resizing && (el.width !== ow || el.height !== oh)) pushHistory();
-    dragging = false; resizing = false;
+    if (resizing && (el.left !== ox || el.top !== oy || el.width !== ow || el.height !== oh)) pushHistory();
+    dragging = false; resizing = false; resizeHandleType = null;
     hideGuides();
   });
 }
 
 // ---------------- Alignment guides ----------------
 const SNAP_THRESHOLD = 5;
-function computeSnap(el, left, top){
-  const width = el.width, height = el.height;
-  const right = left + width, bottom = top + height;
-  const centerX = left + width/2, centerY = top + height/2;
+function computeSnap(el, left, top, newLeft, newTop, newWidth, newHeight){
+  const width = (newWidth !== null && newWidth !== undefined) ? newWidth : el.width;
+  const height = (newHeight !== null && newHeight !== undefined) ? newHeight : el.height;
+  const l = (newLeft !== null && newLeft !== undefined) ? newLeft : left;
+  const t = (newTop !== null && newTop !== undefined) ? newTop : top;
+
+  const right = l + width, bottom = t + height;
+  const centerX = l + width/2, centerY = t + height/2;
   let bestV = null, bestH = null;
+  let deltaWidth = null, deltaHeight = null;
 
   Object.values(elements).forEach(other=>{
     if (other.id === el.id) return;
     const oLeft = other.left, oRight = other.left+other.width, oCenterX = other.left+other.width/2;
     const oTop = other.top, oBottom = other.top+other.height, oCenterY = other.top+other.height/2;
 
-    [[left,oLeft],[left,oRight],[left,oCenterX],[right,oLeft],[right,oRight],[right,oCenterX],[centerX,oLeft],[centerX,oRight],[centerX,oCenterX]]
+    [[l,oLeft],[l,oRight],[l,oCenterX],[right,oLeft],[right,oRight],[right,oCenterX],[centerX,oLeft],[centerX,oRight],[centerX,oCenterX]]
       .forEach(([mine,theirs])=>{
         const diff = Math.abs(mine-theirs);
         if (diff <= SNAP_THRESHOLD && (!bestV || diff < bestV.diff)) bestV = { diff, guideX: theirs, delta: theirs-mine };
       });
-    [[top,oTop],[top,oBottom],[top,oCenterY],[bottom,oTop],[bottom,oBottom],[bottom,oCenterY],[centerY,oTop],[centerY,oBottom],[centerY,oCenterY]]
+    [[t,oTop],[t,oBottom],[t,oCenterY],[bottom,oTop],[bottom,oBottom],[bottom,oCenterY],[centerY,oTop],[centerY,oBottom],[centerY,oCenterY]]
       .forEach(([mine,theirs])=>{
         const diff = Math.abs(mine-theirs);
         if (diff <= SNAP_THRESHOLD && (!bestH || diff < bestH.diff)) bestH = { diff, guideY: theirs, delta: theirs-mine };
@@ -1247,8 +1300,10 @@ function computeSnap(el, left, top){
   });
 
   return {
-    left: left + (bestV ? bestV.delta : 0),
-    top: top + (bestH ? bestH.delta : 0),
+    left: l + (bestV ? bestV.delta : 0),
+    top: t + (bestH ? bestH.delta : 0),
+    width: deltaWidth,
+    height: deltaHeight,
     guideX: bestV ? bestV.guideX : null,
     guideY: bestH ? bestH.guideY : null
   };
