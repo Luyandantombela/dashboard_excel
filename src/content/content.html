@@ -1324,6 +1324,7 @@ function selectElement(id) {
   selectedId = id;
   const node = document.getElementById('node_' + id);
   if (node) node.classList.add('selected');
+  renderLayersList();
   openPropPanel(id);
 }
 
