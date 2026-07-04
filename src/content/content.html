@@ -1218,6 +1218,14 @@ function renderElement(el) {
 
   canvas.appendChild(node);
   
+  // Ensure overflow: visible so handles don't get clipped
+  node.style.overflow = 'visible';
+  
+  // Apply rotation (in case buildNode didn't apply it properly)
+  if (el.rotation) {
+    node.style.transform = `rotate(${el.rotation}deg)`;
+  }
+  
   // Render Lucide icon after node is added to DOM
   if (el.type === 'icon' && window.lucide) {
     window.lucide.createIcons();
