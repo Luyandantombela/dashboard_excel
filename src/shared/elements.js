@@ -480,6 +480,12 @@ window.OverlayElements = (function () {
             background = 'transparent';
         }
         
+        // Store current border colors before applying styles (for visual feedback)
+        const currentBorderTopColor = node.style.borderTopColor;
+        const currentBorderRightColor = node.style.borderRightColor;
+        const currentBorderBottomColor = node.style.borderBottomColor;
+        const currentBorderLeftColor = node.style.borderLeftColor;
+        
         let borderStyles;
         if (m.defineBordersIndependently) {
           borderStyles = {
@@ -520,6 +526,12 @@ window.OverlayElements = (function () {
           overflow: 'visible',
           position: 'relative'
         });
+        
+        // Restore custom border colors (for visual feedback when dragging elements into group)
+        if (currentBorderTopColor) node.style.borderTopColor = currentBorderTopColor;
+        if (currentBorderRightColor) node.style.borderRightColor = currentBorderRightColor;
+        if (currentBorderBottomColor) node.style.borderBottomColor = currentBorderBottomColor;
+        if (currentBorderLeftColor) node.style.borderLeftColor = currentBorderLeftColor;
         
         break;
       }
