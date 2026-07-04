@@ -885,6 +885,11 @@ function setViewMode(isView){
   const btn = document.getElementById('editToggleBtn');
   if (btn) btn.textContent = isView ? 'Edit' : 'View';
   if (isView) closePanel();
+  
+  // Hide all special handles in view mode
+  if (isView) {
+    document.querySelectorAll('.dash-el').forEach(n=>hideSpecialHandles(n));
+  }
 }
 
 function toggleViewEditMode(){
@@ -1201,6 +1206,12 @@ function renderElement(el) {
     window.lucide.createIcons();
   }
 
+  // If element is selected, show handles now
+  if (selectedId === el.id) {
+    node.classList.add('selected');
+    showSpecialHandles(node);
+  }
+
   makeDraggable(node, handles, el);
   node.addEventListener('mousedown', (e) => { 
     if (!e.target.classList.contains('resize-handle') && 
@@ -1213,6 +1224,21 @@ function renderElement(el) {
     e.preventDefault(); e.stopPropagation();
     showContextMenu(e.clientX, e.clientY, el.id);
   });
+}
+
+// Helper to show special shape handles
+function showSpecialHandles(node) {
+  const vertices = node.querySelectorAll('.vertex-handle');
+  const edges = node.querySelectorAll('.edge-add-handle');
+  vertices.forEach(v => v.style.display = 'block');
+  edges.forEach(e => e.style.display = 'flex');
+}
+// Helper to hide special shape handles
+function hideSpecialHandles(node) {
+  const vertices = node.querySelectorAll('.vertex-handle');
+  const edges = node.querySelectorAll('.edge-add-handle');
+  vertices.forEach(v => v.style.display = 'none');
+  edges.forEach(e => e.style.display = 'none');
 }
 
 // Helper function to convert normalized (0-100) coordinates to pixel coordinates
@@ -1277,6 +1303,7 @@ function setupSpecialShape(node, el) {
       vHandle.style.zIndex = 20;
       vHandle.style.cursor = 'move';
       vHandle.dataset.vertexIndex = index;
+      vHandle.style.display = 'none'; // Initially hidden
 
       // Dragging logic for vertex
       let isDraggingVertex = false;
@@ -1289,11 +1316,105 @@ function setupSpecialShape(node, el) {
       document.addEventListener('mousemove', (e) => {
         if (isDraggingVertex) {
           const rect = node.getBoundingClientRect();
+          const canvasWrap = document.getElementById('canvasWrap');
+          const canvasRect = canvas.getBoundingClientRect();
+          
+          // Calculate mouse position relative to canvas
+          const canvasMouseX = e.clientX - canvasRect.left + canvasWrap.scrollLeft;
+          const canvasMouseY = e.clientY - canvasRect.top + canvasWrap.scrollTop;
+          
+          // Convert to normalized coordinates for element
           const dx = e.clientX - rect.left;
           const dy = e.clientY - rect.top;
-          const newNorm = pixelToNorm(dx, dy, el.width, el.height);
+          
+          // Try to snap!
+          const snap = computeSnapVertex(el.id, canvasMouseX, canvasMouseY);
+          
+          // Convert snapped canvas position back to element-relative pixel position
+          const elRelX = snap.left - el.left;
+          const elRelY = snap.top - el.top;
+          
+          const newNorm = pixelToNorm(elRelX, elRelY, el.width, el.height);
           m.vertices[index] = newNorm;
-          updateSpecialShape();
+          
+          // Show guides
+          showGuides(snap);
+          
+          // Update polygon
+          const svg = node.querySelector('svg');
+          const polygon = svg ? svg.querySelector('polygon') : null;
+          if (polygon) {
+            const points = m.vertices.map(v => `${v.x},${v.y}`).join(' ');
+            polygon.setAttribute('points', points);
+          }
+          
+          // Recompute all vertex and edge positions
+          const currentVertices = node.querySelectorAll('.vertex-handle');
+          const currentEdges = node.querySelectorAll('.edge-add-handle');
+          currentVertices.forEach(v => v.remove());
+          currentEdges.forEach(e => e.remove());
+          
+          m.vertices.forEach((v, i) => {
+            const p = normToPixel(v.x, v.y, el.width, el.height);
+            const vh = document.createElement('div');
+            vh.className = 'vertex-handle';
+            vh.style.left = (p.x - 8) + 'px';
+            vh.style.top = (p.y - 8) + 'px';
+            vh.style.width = '16px';
+            vh.style.height = '16px';
+            vh.style.borderRadius = '50%';
+            vh.style.background = 'var(--emerald)';
+            vh.style.border = '2px solid white';
+            vh.style.position = 'absolute';
+            vh.style.zIndex = 20;
+            vh.style.cursor = 'move';
+            vh.dataset.vertexIndex = i;
+            node.appendChild(vh);
+          });
+          
+          for (let i = 0; i < m.vertices.length; i++) {
+            const v1 = m.vertices[i];
+            const v2 = m.vertices[(i + 1) % m.vertices.length];
+            const midX = (v1.x + v2.x) / 2;
+            const midY = (v1.y + v2.y) / 2;
+            const pixelPos = normToPixel(midX, midY, el.width, el.height);
+            
+            const edgeHandle = document.createElement('div');
+            edgeHandle.className = 'edge-add-handle';
+            edgeHandle.style.left = (pixelPos.x - 10) + 'px';
+            edgeHandle.style.top = (pixelPos.y - 10) + 'px';
+            edgeHandle.style.width = '20px';
+            edgeHandle.style.height = '20px';
+            edgeHandle.style.borderRadius = '50%';
+            edgeHandle.style.background = 'rgba(255,255,255,0.9)';
+            edgeHandle.style.border = '2px solid var(--emerald)';
+            edgeHandle.style.position = 'absolute';
+            edgeHandle.style.zIndex = 19;
+            edgeHandle.style.cursor = 'pointer';
+            edgeHandle.style.display = 'flex';
+            edgeHandle.style.alignItems = 'center';
+            edgeHandle.style.justifyContent = 'center';
+            edgeHandle.style.fontSize = '14px';
+            edgeHandle.style.color = 'var(--emerald)';
+            edgeHandle.style.fontWeight = 'bold';
+            edgeHandle.textContent = '+';
+            edgeHandle.dataset.edgeIndex = i;
+            
+            edgeHandle.addEventListener('click', (e) => {
+              e.stopPropagation();
+              selectElement(el.id);
+              const newVertex = { x: midX, y: midY };
+              m.vertices.splice(i + 1, 0, newVertex);
+              pushHistory();
+              redrawElement(el);
+            });
+            node.appendChild(edgeHandle);
+          }
+          
+          // Show handles if selected
+          if (selectedId === el.id) {
+            showSpecialHandles(node);
+          }
         }
       });
       document.addEventListener('mouseup', () => {
@@ -1301,6 +1422,7 @@ function setupSpecialShape(node, el) {
           pushHistory();
         }
         isDraggingVertex = false;
+        hideGuides();
       });
 
       node.appendChild(vHandle);
@@ -1326,7 +1448,7 @@ function setupSpecialShape(node, el) {
       edgeHandle.style.position = 'absolute';
       edgeHandle.style.zIndex = 19;
       edgeHandle.style.cursor = 'pointer';
-      edgeHandle.style.display = 'flex';
+      edgeHandle.style.display = 'none'; // Initially hidden
       edgeHandle.style.alignItems = 'center';
       edgeHandle.style.justifyContent = 'center';
       edgeHandle.style.fontSize = '14px';
@@ -1643,6 +1765,34 @@ function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight)
     guideY: bestH ? bestH.guideY : null
   };
 }
+function computeSnapVertex(elId, canvasX, canvasY) {
+  let bestV = null, bestH = null;
+
+  Object.values(elements).forEach(other=>{
+    if (other.id === elId) return;
+    const oLeft = other.left, oRight = other.left+other.width, oCenterX = other.left+other.width/2;
+    const oTop = other.top, oBottom = other.top+other.height, oCenterY = other.top+other.height/2;
+
+    // Check against other element's edges and center
+    [[canvasX,oLeft],[canvasX,oRight],[canvasX,oCenterX]]
+      .forEach(([mine,theirs])=>{
+        const diff = Math.abs(mine-theirs);
+        if (diff <= SNAP_THRESHOLD && (!bestV || diff < bestV.diff)) bestV = { diff, guideX: theirs, delta: theirs-mine };
+      });
+    [[canvasY,oTop],[canvasY,oBottom],[canvasY,oCenterY]]
+      .forEach(([mine,theirs])=>{
+        const diff = Math.abs(mine-theirs);
+        if (diff <= SNAP_THRESHOLD && (!bestH || diff < bestH.diff)) bestH = { diff, guideY: theirs, delta: theirs-mine };
+      });
+  });
+
+  return {
+    left: canvasX + (bestV ? bestV.delta : 0),
+    top: canvasY + (bestH ? bestH.delta : 0),
+    guideX: bestV ? bestV.guideX : null,
+    guideY: bestH ? bestH.guideY : null
+  };
+}
 function showGuides(snap){
   const gv = document.getElementById('guideV'), gh = document.getElementById('guideH');
   if (snap.guideX !== null) { gv.style.left = snap.guideX + 'px'; gv.style.display = 'block'; } else { gv.style.display = 'none'; }
@@ -1655,10 +1805,16 @@ function hideGuides(){
 
 // ---------------- Selection + property panel ----------------
 function selectElement(id) {
-  document.querySelectorAll('.dash-el').forEach(n => n.classList.remove('selected'));
+  document.querySelectorAll('.dash-el').forEach(n => {
+    n.classList.remove('selected');
+    hideSpecialHandles(n);
+  });
   selectedId = id;
   const node = document.getElementById('node_' + id);
-  if (node) node.classList.add('selected');
+  if (node) {
+    node.classList.add('selected');
+    showSpecialHandles(node);
+  }
   renderLayersList();
   openPropPanel(id);
 }
@@ -1738,7 +1894,15 @@ function openPropPanel(id) {
   });
   document.addEventListener('mouseup', ()=>dragging=false);
 }
-function closePanel(){ if(panelEl) panelEl.remove(); panelEl=null; document.querySelectorAll('.dash-el').forEach(n=>n.classList.remove('selected')); selectedId=null; }
+function closePanel(){ 
+  if(panelEl) panelEl.remove(); 
+  panelEl=null; 
+  document.querySelectorAll('.dash-el').forEach(n=>{
+    n.classList.remove('selected');
+    hideSpecialHandles(n);
+  }); 
+  selectedId=null; 
+}
 
 function renderTab(tab, id) {
   const el = elements[id];
