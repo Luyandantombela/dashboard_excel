@@ -333,7 +333,7 @@ window.OverlayElements = (function () {
           border: border,
           borderRadius: borderRadius + 'px',
           opacity: m.opacity != null ? m.opacity : 1,
-          boxShadow: m.shadowStyle === 'none' ? 'none' : (m.shadowStyle || '0 2px 8px rgba(0,0,0,0.15)')
+          boxShadow: m.shadowStyle === 'none' ? 'none' : (m.shadowStyle || 'none')
         });
         node.innerHTML = `<i data-lucide="${iconName}" style="width: ${iconSize}px; height: ${iconSize}px;"></i>`;
         break;
