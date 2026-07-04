@@ -1491,6 +1491,8 @@ function redrawElement(el) {
 
 function makeDraggable(node, handles, rotateHandle, el) {
   let dragging=false, resizing=false, rotating=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0, resizeHandleType=null, startRotation=0;
+  let groupChildInitialPositions = []; // For storing initial child positions when dragging group
+  
   node.addEventListener('mousedown', (e)=>{
     if (e.button !== 0) return; // ignore right-click, handled by contextmenu
     const isResizeHandle = e.target.classList.contains('resize-handle');
@@ -1519,6 +1521,22 @@ function makeDraggable(node, handles, rotateHandle, el) {
     dragging = true;
     sx=e.clientX; sy=e.clientY;
     ox=el.left; oy=el.top;
+    
+    // If it's a group, store initial child positions relative to group
+    if (el.type === 'group' && el.meta && el.meta.children) {
+      groupChildInitialPositions = el.meta.children.map(childId => {
+        const child = elements[childId];
+        if (child) {
+          return {
+            id: childId,
+            relLeft: child.left - ox,
+            relTop: child.top - oy
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    }
+    
     e.preventDefault();
   });
   document.addEventListener('mousemove', (e)=>{
@@ -1531,15 +1549,15 @@ function makeDraggable(node, handles, rotateHandle, el) {
       node.style.top = el.top + 'px';
       showGuides(snap);
       
-      // Handle group children dragging
-      if (el.type === 'group' && el.meta && el.meta.children) {
-        el.meta.children.forEach(childId => {
+      // Handle group children dragging using stored relative positions
+      if (el.type === 'group' && groupChildInitialPositions.length > 0) {
+        groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop }) => {
           const child = elements[childId];
           if (child) {
             const childNode = document.getElementById('node_' + childId);
             if (childNode) {
-              child.left = el.left + (child.left - ox);
-              child.top = el.top + (child.top - oy);
+              child.left = el.left + relLeft;
+              child.top = el.top + relTop;
               childNode.style.left = child.left + 'px';
               childNode.style.top = child.top + 'px';
             }
@@ -1553,8 +1571,8 @@ function makeDraggable(node, handles, rotateHandle, el) {
           if (groupEl.type === 'group' && groupEl.id !== el.id) {
             const groupNode = document.getElementById('node_' + groupEl.id);
             if (groupNode) {
-              const isInside = isElementInsideElement(el, groupEl);
-              groupNode.style.borderColor = isInside ? '#ff6b6b' : '';
+              const isTouching = isElementsIntersecting(el, groupEl);
+              groupNode.style.borderColor = isTouching ? '#ff6b6b' : '';
             }
           }
         });
@@ -1726,6 +1744,21 @@ function isElementInsideElement(childEl, parentEl) {
   
   return childLeft >= parentLeft && childTop >= parentTop && 
          childRight <= parentRight && childBottom <= parentBottom;
+}
+
+function isElementsIntersecting(el1, el2) {
+  const el1Left = el1.left;
+  const el1Top = el1.top;
+  const el1Right = el1Left + el1.width;
+  const el1Bottom = el1Top + el1.height;
+  
+  const el2Left = el2.left;
+  const el2Top = el2.top;
+  const el2Right = el2Left + el2.width;
+  const el2Bottom = el2Top + el2.height;
+  
+  return !(el1Right < el2Left || el1Left > el2Right || 
+           el1Bottom < el2Top || el1Top > el2Bottom);
 }
 
 // ---------------- Alignment guides ----------------
