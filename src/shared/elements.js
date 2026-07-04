@@ -46,7 +46,32 @@ window.OverlayElements = (function () {
   text:     { w:180, h:28,  label:'Section title' },
   shape:    { w:120,  h:120,  label:'', meta: { shapeType: 'square' } },
     graph:    { w:280, h:170, label:'', binding:'Sheet1!B2:E10', meta:{ chartType:'line' } },
-    group:    { w:320, h:220, label:'Group' },
+    group:    { w:320, h:220, label:'Group', meta: { 
+      opacity: 1, 
+      backgroundStyle: 'none', 
+      backgroundColor: '#FFFFFF', 
+      gradientColor1: '#1E7F5C', 
+      gradientColor2: '#E8A33D', 
+      defineBordersIndependently: false,
+      borderStyle: 'none',
+      borderColor: '#000000',
+      borderRadius: 0,
+      borderWidth: 1,
+      borderLeftStyle: 'none',
+      borderRightStyle: 'none',
+      borderTopStyle: 'none',
+      borderBottomStyle: 'none',
+      borderLeftColor: '#000000',
+      borderRightColor: '#000000',
+      borderTopColor: '#000000',
+      borderBottomColor: '#000000',
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      shadowStyle: 'none',
+      children: [] // To store child element IDs
+    } },
     repeating: { w:320, h:160, label:'Repeating group', binding:'Sheet1!A2:D20' },
     popup:    { w:280, h:180, label:'Popup' },
     floating: { w:260, h:170, label:'Floating group' },
@@ -359,7 +384,7 @@ window.OverlayElements = (function () {
         node.textContent = el.label || 'Text';
         break;
       }
-      case 'shape':
+      case 'shape': {
         const m = el.meta || {};
         const shapeType = m.shapeType || 'square';
         const fillColor = el.fill || '#E8A33D';
@@ -427,6 +452,7 @@ window.OverlayElements = (function () {
 
         node.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="none">${svgContent}</svg>`;
         break;
+      }
       case 'image':
         applyStyle(node, {
           background: 'repeating-linear-gradient(45deg,#EFF1F4,#EFF1F4 8px,#F7F8FA 8px,#F7F8FA 16px)',
@@ -439,7 +465,65 @@ window.OverlayElements = (function () {
         applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
         node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line');
         break;
-      case 'group': case 'repeating': case 'popup': case 'floating':
+      case 'group': {
+        const m = el.meta || {};
+        
+        let background;
+        switch (m.backgroundStyle) {
+          case 'flat':
+            background = m.backgroundColor || '#FFFFFF';
+            break;
+          case 'gradient':
+            background = `linear-gradient(135deg, ${m.gradientColor1 || '#1E7F5C'}, ${m.gradientColor2 || '#E8A33D'})`;
+            break;
+          default:
+            background = 'transparent';
+        }
+        
+        let borderStyles;
+        if (m.defineBordersIndependently) {
+          borderStyles = {
+            borderTop: m.borderTopStyle === 'none' ? 'none' : `${m.borderTopWidth || 1}px ${m.borderTopStyle} ${m.borderTopColor || '#000000'}`,
+            borderRight: m.borderRightStyle === 'none' ? 'none' : `${m.borderRightWidth || 1}px ${m.borderRightStyle} ${m.borderRightColor || '#000000'}`,
+            borderBottom: m.borderBottomStyle === 'none' ? 'none' : `${m.borderBottomWidth || 1}px ${m.borderBottomStyle} ${m.borderBottomColor || '#000000'}`,
+            borderLeft: m.borderLeftStyle === 'none' ? 'none' : `${m.borderLeftWidth || 1}px ${m.borderLeftStyle} ${m.borderLeftColor || '#000000'}`
+          };
+        } else {
+          const border = m.borderStyle === 'none' ? 'none' : `${m.borderWidth || 1}px ${m.borderStyle} ${m.borderColor || '#000000'}`;
+          borderStyles = { borderTop: border, borderRight: border, borderBottom: border, borderLeft: border };
+        }
+        
+        let boxShadow;
+        switch (m.shadowStyle) {
+          case 'none':
+            boxShadow = 'none';
+            break;
+          case 'small':
+            boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            break;
+          case 'medium':
+            boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+            break;
+          case 'large':
+            boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
+            break;
+          default:
+            boxShadow = 'none';
+        }
+        
+        applyStyle(node, {
+          background: background,
+          borderRadius: (m.borderRadius || 0) + 'px',
+          opacity: m.opacity != null ? m.opacity : 1,
+          boxShadow: boxShadow,
+          ...borderStyles,
+          overflow: 'visible',
+          position: 'relative'
+        });
+        
+        break;
+      }
+      case 'repeating': case 'popup': case 'floating':
         applyStyle(node, { background: 'rgba(30,127,92,0.04)', border: '1.5px dashed rgba(30,127,92,0.4)', color: '#6B7480', fontSize: '11px', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '6px 8px' });
         node.textContent = el.label || TYPE_LABELS[el.type];
         break;
