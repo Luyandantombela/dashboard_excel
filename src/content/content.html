@@ -1530,6 +1530,35 @@ function makeDraggable(node, handles, rotateHandle, el) {
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
       showGuides(snap);
+      
+      // Handle group children dragging
+      if (el.type === 'group' && el.meta && el.meta.children) {
+        el.meta.children.forEach(childId => {
+          const child = elements[childId];
+          if (child) {
+            const childNode = document.getElementById('node_' + childId);
+            if (childNode) {
+              child.left = el.left + (child.left - ox);
+              child.top = el.top + (child.top - oy);
+              childNode.style.left = child.left + 'px';
+              childNode.style.top = child.top + 'px';
+            }
+          }
+        });
+      }
+      
+      // Check for group hover (visual feedback)
+      if (el.type !== 'group') {
+        Object.values(elements).forEach(groupEl => {
+          if (groupEl.type === 'group' && groupEl.id !== el.id) {
+            const groupNode = document.getElementById('node_' + groupEl.id);
+            if (groupNode) {
+              const isInside = isElementInsideElement(el, groupEl);
+              groupNode.style.borderColor = isInside ? '#ff6b6b' : '';
+            }
+          }
+        });
+      }
     } else if (resizing) {
       let newLeft = ox, newTop = oy, newWidth = ow, newHeight = oh;
       const dx = e.clientX - sx;
@@ -1566,6 +1595,36 @@ function makeDraggable(node, handles, rotateHandle, el) {
       node.style.width = el.width + 'px';
       node.style.height = el.height + 'px';
       showGuides(snap);
+      
+      // Handle group children resizing
+      if (el.type === 'group' && el.meta && el.meta.children) {
+        const scaleX = newWidth / ow;
+        const scaleY = newHeight / oh;
+        const offsetX = newLeft - ox;
+        const offsetY = newTop - oy;
+        
+        el.meta.children.forEach(childId => {
+          const child = elements[childId];
+          if (child) {
+            const childNode = document.getElementById('node_' + childId);
+            if (childNode) {
+              // Calculate new position and size
+              const relX = child.left - ox;
+              const relY = child.top - oy;
+              
+              child.left = newLeft + relX * scaleX;
+              child.top = newTop + relY * scaleY;
+              child.width = child.width * scaleX;
+              child.height = child.height * scaleY;
+              
+              childNode.style.left = child.left + 'px';
+              childNode.style.top = child.top + 'px';
+              childNode.style.width = child.width + 'px';
+              childNode.style.height = child.height + 'px';
+            }
+          }
+        });
+      }
     } else if (rotating) {
       const rect = node.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -1575,10 +1634,74 @@ function makeDraggable(node, handles, rotateHandle, el) {
       const deltaDeg = ((currentAngle - startAngle) * 180) / Math.PI;
       el.rotation = startRotation + deltaDeg;
       node.style.transform = `rotate(${el.rotation}deg)`;
+      
+      // Handle group children rotation
+      if (el.type === 'group' && el.meta && el.meta.children) {
+        el.meta.children.forEach(childId => {
+          const child = elements[childId];
+          if (child) {
+            const childNode = document.getElementById('node_' + childId);
+            if (childNode) {
+              // Rotate child around group center
+              const groupCenterX = el.left + el.width / 2;
+              const groupCenterY = el.top + el.height / 2;
+              
+              const childCenterX = child.left + child.width / 2;
+              const childCenterY = child.top + child.height / 2;
+              
+              const dx = childCenterX - groupCenterX;
+              const dy = childCenterY - groupCenterY;
+              
+              const angleRad = (deltaDeg * Math.PI) / 180;
+              
+              const newX = dx * Math.cos(angleRad) - dy * Math.sin(angleRad) + groupCenterX;
+              const newY = dx * Math.sin(angleRad) + dy * Math.cos(angleRad) + groupCenterY;
+              
+              child.left = newX - child.width / 2;
+              child.top = newY - child.height / 2;
+              child.rotation = (child.rotation || 0) + deltaDeg;
+              
+              childNode.style.left = child.left + 'px';
+              childNode.style.top = child.top + 'px';
+              childNode.style.transform = `rotate(${child.rotation}deg)`;
+            }
+          }
+        });
+      }
     }
   });
   document.addEventListener('mouseup', ()=>{
-    if (dragging && (el.left !== ox || el.top !== oy)) pushHistory();
+    if (dragging && (el.left !== ox || el.top !== oy)) {
+      // Check if element was dropped into a group
+      if (el.type !== 'group') {
+        Object.values(elements).forEach(groupEl => {
+          if (groupEl.type === 'group' && groupEl.id !== el.id) {
+            const isInside = isElementInsideElement(el, groupEl);
+            const groupNode = document.getElementById('node_' + groupEl.id);
+            if (groupNode) {
+              groupNode.style.borderColor = '';
+            }
+            if (isInside) {
+              // Remove from old group if present
+              Object.values(elements).forEach(oldGroup => {
+                if (oldGroup.type === 'group' && oldGroup.meta && oldGroup.meta.children) {
+                  oldGroup.meta.children = oldGroup.meta.children.filter(cid => cid !== el.id);
+                }
+              });
+              
+              // Add to new group
+              if (!groupEl.meta) groupEl.meta = {};
+              if (!groupEl.meta.children) groupEl.meta.children = [];
+              if (!groupEl.meta.children.includes(el.id)) {
+                groupEl.meta.children.push(el.id);
+                pushHistory();
+              }
+            }
+          }
+        });
+      }
+      pushHistory();
+    }
     if (resizing && (el.left !== ox || el.top !== oy || el.width !== ow || el.height !== oh)) {
       pushHistory();
       // Redraw element to ensure all handles are correct after resize
@@ -1588,6 +1711,21 @@ function makeDraggable(node, handles, rotateHandle, el) {
     dragging = false; resizing = false; rotating = false; resizeHandleType = null;
     hideGuides();
   });
+}
+
+function isElementInsideElement(childEl, parentEl) {
+  const childLeft = childEl.left;
+  const childTop = childEl.top;
+  const childRight = childLeft + childEl.width;
+  const childBottom = childTop + childEl.height;
+  
+  const parentLeft = parentEl.left;
+  const parentTop = parentEl.top;
+  const parentRight = parentLeft + parentEl.width;
+  const parentBottom = parentTop + parentEl.height;
+  
+  return childLeft >= parentLeft && childTop >= parentTop && 
+         childRight <= parentRight && childBottom <= parentBottom;
 }
 
 // ---------------- Alignment guides ----------------
@@ -2167,6 +2305,202 @@ function renderTab(tab, id) {
         ()=>{ pushHistory(); }
       );
     });
+  } else if (tab === 'appearance' && el.type === 'group') {
+    const m = el.meta || {};
+    const borderStyles = ['none','solid','dashed','dotted'];
+    const shadowStyleOptions = ['none','small','medium','large'];
+    const backgroundStyleOptions = ['none','flat','gradient'];
+    
+    function renderGroupPanel() {
+      body.innerHTML = `
+        <div class="field">
+          <div class="field-label">Opacity</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="field-input mono" type="number" min="0" max="100" value="${Math.round((m.opacity != null ? m.opacity : 1) * 100)}" oninput="setMeta('${id}','opacity',parseFloat(this.value)/100); redrawElement(elements['${id}']);" onblur="pushHistory()" style="flex:1;">
+            <span style="color:var(--text-faint);width:28px;text-align:right;">%</span>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Background style</div>
+          <select class="field-input" id="bgStyleSelect" onchange="setMeta('${id}','backgroundStyle',this.value); renderGroupPanel(); redrawElement(elements['${id}']);">
+            ${backgroundStyleOptions.map(opt => `<option value="${opt}" ${(m.backgroundStyle || 'none') === opt ? 'selected' : ''}>${opt.charAt(0).toUpperCase() + opt.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        ${m.backgroundStyle === 'flat' ? `
+          <div class="field">
+            <div class="field-label">Background color</div>
+            <button class="color-swatch-btn" id="groupBgColorSwatchBtn" type="button">
+              <span class="chip" id="groupBgColorChip" style="background:${m.backgroundColor || '#FFFFFF'}"></span>
+              <span class="hex-label" id="groupBgColorHex">${m.backgroundColor || '#FFFFFF'}</span>
+            </button>
+          </div>
+        ` : ''}
+        ${m.backgroundStyle === 'gradient' ? `
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Gradient start</div>
+              <button class="color-swatch-btn" id="gradientStartSwatchBtn" type="button">
+                <span class="chip" id="gradientStartChip" style="background:${m.gradientColor1 || '#1E7F5C'}"></span>
+              </button>
+            </div>
+            <div class="field">
+              <div class="field-label">Gradient end</div>
+              <button class="color-swatch-btn" id="gradientEndSwatchBtn" type="button">
+                <span class="chip" id="gradientEndChip" style="background:${m.gradientColor2 || '#E8A33D'}"></span>
+              </button>
+            </div>
+          </div>
+        ` : ''}
+        <div class="field">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="field-label">Define each border independently</div>
+            <button class="style-toggle ${m.defineBordersIndependently ? 'active' : ''}" onclick="setMeta('${id}','defineBordersIndependently',!elements['${id}'].meta.defineBordersIndependently); renderGroupPanel(); redrawElement(elements['${id}']);" style="width:24px;height:24px;">
+              ${m.defineBordersIndependently ? '✓' : ''}
+            </button>
+          </div>
+        </div>
+        ${m.defineBordersIndependently ? `
+          ${['top','right','bottom','left'].map(side => `
+            <div class="field-row">
+              <div class="field">
+                <div class="field-label">${side.charAt(0).toUpperCase() + side.slice(1)} style</div>
+                <select class="field-input" onchange="setMeta('${id}','border${side.charAt(0).toUpperCase() + side.slice(1)}Style',this.value); redrawElement(elements['${id}']);">
+                  ${borderStyles.map(bs => `<option value="${bs}" ${(m[`border${side.charAt(0).toUpperCase() + side.slice(1)}Style`] || 'none') === bs ? 'selected' : ''}>${bs.charAt(0).toUpperCase() + bs.slice(1)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field">
+                <div class="field-label">${side.charAt(0).toUpperCase() + side.slice(1)} width</div>
+                <input class="field-input mono" type="number" min="0" value="${m[`border${side.charAt(0).toUpperCase() + side.slice(1)}Width`] != null ? m[`border${side.charAt(0).toUpperCase() + side.slice(1)}Width`] : 1}" oninput="setMeta('${id}','border${side.charAt(0).toUpperCase() + side.slice(1)}Width',parseFloat(this.value)||0); redrawElement(elements['${id}']);" onblur="pushHistory()">
+              </div>
+              <div class="field">
+                <div class="field-label">${side.charAt(0).toUpperCase() + side.slice(1)} color</div>
+                <button class="color-swatch-btn" id="border${side}ColorSwatchBtn" type="button">
+                  <span class="chip" id="border${side}ColorChip" style="background:${m[`border${side.charAt(0).toUpperCase() + side.slice(1)}Color`] || '#000000'}"></span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        ` : `
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Border style - all borders</div>
+              <select class="field-input" onchange="setMeta('${id}','borderStyle',this.value); renderGroupPanel(); redrawElement(elements['${id}']);">
+                ${borderStyles.map(bs => `<option value="${bs}" ${(m.borderStyle || 'none') === bs ? 'selected' : ''}>${bs.charAt(0).toUpperCase() + bs.slice(1)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <div class="field-label">Roundness</div>
+              <input class="field-input mono" type="number" min="0" value="${m.borderRadius != null ? m.borderRadius : 0}" oninput="setMeta('${id}','borderRadius',parseFloat(this.value)||0); redrawElement(elements['${id}']);" onblur="pushHistory()">
+            </div>
+          </div>
+          ${m.borderStyle !== 'none' ? `
+            <div class="field-row">
+              <div class="field">
+                <div class="field-label">Border width</div>
+                <input class="field-input mono" type="number" min="0" value="${m.borderWidth != null ? m.borderWidth : 1}" oninput="setMeta('${id}','borderWidth',parseFloat(this.value)||0); redrawElement(elements['${id}']);" onblur="pushHistory()">
+              </div>
+              <div class="field">
+                <div class="field-label">Border color</div>
+                <button class="color-swatch-btn" id="groupBorderColorSwatchBtn" type="button">
+                  <span class="chip" id="groupBorderColorChip" style="background:${m.borderColor || '#000000'}"></span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+        `}
+        <div class="field">
+          <div class="field-label">Shadow style</div>
+          <select class="field-input" onchange="setMeta('${id}','shadowStyle',this.value); redrawElement(elements['${id}']);" onblur="pushHistory()">
+            ${shadowStyleOptions.map(ss => `<option value="${ss}" ${(m.shadowStyle || 'none') === ss ? 'selected' : ''}>${ss.charAt(0).toUpperCase() + ss.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="divider"></div>
+        <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+      `;
+      
+      // Add color picker event listeners
+      if (m.backgroundStyle === 'flat') {
+        const bgBtn = document.getElementById('groupBgColorSwatchBtn');
+        if (bgBtn) {
+          bgBtn.addEventListener('click', function(){
+            openColorPicker(this, (elements[id].meta && elements[id].meta.backgroundColor) || '#FFFFFF',
+              (hex)=>{ 
+                setMeta(id, 'backgroundColor', hex); 
+                redrawElement(elements[id]); 
+                document.getElementById('groupBgColorChip').style.background = hex; 
+                document.getElementById('groupBgColorHex').textContent = hex; 
+              },
+              ()=>{ pushHistory(); }
+            );
+          });
+        }
+      }
+      
+      if (m.backgroundStyle === 'gradient') {
+        const startBtn = document.getElementById('gradientStartSwatchBtn');
+        if (startBtn) {
+          startBtn.addEventListener('click', function(){
+            openColorPicker(this, (elements[id].meta && elements[id].meta.gradientColor1) || '#1E7F5C',
+              (hex)=>{ 
+                setMeta(id, 'gradientColor1', hex); 
+                redrawElement(elements[id]); 
+                document.getElementById('gradientStartChip').style.background = hex; 
+              },
+              ()=>{ pushHistory(); }
+            );
+          });
+        }
+        
+        const endBtn = document.getElementById('gradientEndSwatchBtn');
+        if (endBtn) {
+          endBtn.addEventListener('click', function(){
+            openColorPicker(this, (elements[id].meta && elements[id].meta.gradientColor2) || '#E8A33D',
+              (hex)=>{ 
+                setMeta(id, 'gradientColor2', hex); 
+                redrawElement(elements[id]); 
+                document.getElementById('gradientEndChip').style.background = hex; 
+              },
+              ()=>{ pushHistory(); }
+            );
+          });
+        }
+      }
+      
+      if (m.defineBordersIndependently) {
+        ['top','right','bottom','left'].forEach(side => {
+          const btn = document.getElementById(`border${side}ColorSwatchBtn`);
+          if (btn) {
+            btn.addEventListener('click', function(){
+              const propName = `border${side.charAt(0).toUpperCase() + side.slice(1)}Color`;
+              openColorPicker(this, (elements[id].meta && elements[id].meta[propName]) || '#000000',
+                (hex)=>{ 
+                  setMeta(id, propName, hex); 
+                  redrawElement(elements[id]); 
+                  document.getElementById(`border${side}ColorChip`).style.background = hex; 
+                },
+                ()=>{ pushHistory(); }
+              );
+            });
+          }
+        });
+      } else if (m.borderStyle !== 'none') {
+        const borderBtn = document.getElementById('groupBorderColorSwatchBtn');
+        if (borderBtn) {
+          borderBtn.addEventListener('click', function(){
+            openColorPicker(this, (elements[id].meta && elements[id].meta.borderColor) || '#000000',
+              (hex)=>{ 
+                setMeta(id, 'borderColor', hex); 
+                redrawElement(elements[id]); 
+                document.getElementById('groupBorderColorChip').style.background = hex; 
+              },
+              ()=>{ pushHistory(); }
+            );
+          });
+        }
+      }
+    }
+    
+    renderGroupPanel();
   } else if (tab === 'appearance' && el.type === 'graph') {
     const m = el.meta || {};
     const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
