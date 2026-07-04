@@ -40,11 +40,11 @@ window.OverlayElements = (function () {
   ];
 
   const DEFAULTS = {
-    button:   { w:120, h:40,  label:'Refresh view' },
-    icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24, borderStyle: 'none', shadowStyle: 'none' } },
-    image:    { w:160, h:110, label:'Image' },
-    text:     { w:180, h:28,  label:'Section title' },
-    shape:    { w:90,  h:90,  label:'', meta: { shapeType: 'square' } },
+  button:   { w:120, h:40,  label:'Refresh view' },
+  icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24, borderStyle: 'none', shadowStyle: 'none' } },
+  image:    { w:160, h:110, label:'Image' },
+  text:     { w:180, h:28,  label:'Section title' },
+  shape:    { w:120,  h:120,  label:'', meta: { shapeType: 'square' } },
     graph:    { w:280, h:170, label:'', binding:'Sheet1!B2:E10', meta:{ chartType:'line' } },
     group:    { w:320, h:220, label:'Group' },
     repeating: { w:320, h:160, label:'Repeating group', binding:'Sheet1!A2:D20' },
@@ -393,6 +393,19 @@ window.OverlayElements = (function () {
             const arrowHeadSize = viewBoxSize * 0.2;
             svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - arrowHeadSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>
 <polygon points="${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 - arrowHeadSize/1.5} ${viewBoxSize - strokeWidth},${viewBoxSize/2} ${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 + arrowHeadSize/1.5}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth/2}"/>`;
+            break;
+          case 'special':
+            // For special polygon, we use normalized coordinates (0-100) in meta.vertices
+            // If no vertices exist, start with a triangle
+            if (!m.vertices) {
+              m.vertices = [
+                { x: 50, y: 15 },
+                { x: 85, y: 85 },
+                { x: 15, y: 85 }
+              ];
+            }
+            const points = m.vertices.map(v => `${v.x},${v.y}`).join(' ');
+            svgContent = `<polygon points="${points}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
             break;
           default:
             svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
