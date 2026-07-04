@@ -1,1963 +1,474 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Overlay — Dashboard Builder</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-<script src="../shared/elements.js"></script>
-<style>
-  :root{
-    --ink:#12181F; --ink-soft:#1B232D; --panel:#FFFFFF; --canvas:#F5F6F8;
-    --line:#E4E7EB; --line-soft:#EEF0F3; --text:#1C232B; --text-dim:#6B7480; --text-faint:#9AA2AC;
-    --emerald:#1E7F5C; --emerald-soft:#E4F3EC; --amber:#E8A33D; --amber-soft:#FCEFD9;
-    --shadow-lg: 0 20px 48px -12px rgba(18,24,31,0.28), 0 2px 8px rgba(18,24,31,0.08);
-    --shadow-sm: 0 1px 2px rgba(18,24,31,0.06), 0 1px 1px rgba(18,24,31,0.04);
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;}
-  body{font-family:'Inter',sans-serif;color:var(--text);background:var(--ink);overflow:hidden;font-size:13px;}
-  #app{display:flex;flex-direction:column;height:100vh;width:100vw;}
+/* Overlay — shared element definitions & renderer.
+   Used by both src/taskpane/taskpane.html (editable canvas) and
+   src/content/content.html (published, read-only view), so the two
+   surfaces always render an element identically. */
 
-  .topbar{height:52px;background:var(--ink);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.06);}
-  .brand{display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;color:#fff;}
-  .brand-mark{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg, var(--emerald), #14523D);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:#fff;}
-  .workbook-name{font-size:10px;color:rgba(255,255,255,0.4);font-family:'JetBrains Mono',monospace;margin-top:1px;}
-  .publish-btn{background:var(--emerald);color:#fff;border:none;font-size:11.5px;font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px;}
-  .publish-btn:disabled{opacity:0.5;cursor:default;}
-  .publish-status{font-size:9.5px;color:rgba(255,255,255,0.45);margin-top:2px;font-family:'JetBrains Mono',monospace;}
+window.OverlayElements = (function () {
 
-  .body-row{flex:1;display:flex;min-height:0;}
-
-  .rail{width:200px;background:var(--ink-soft);border-right:1px solid rgba(255,255,255,0.06);flex-shrink:0;display:flex;flex-direction:column;}
-  .rail-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 8px;}
-  .rail-scroll::-webkit-scrollbar{width:5px;}
-  .rail-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;}
-  .group-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.32);padding:10px 6px 6px 6px;}
-  .element-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
-  .element-chip{display:flex;flex-direction:column;align-items:center;gap:6px;padding:9px 4px;border-radius:8px;background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.05);cursor:pointer;user-select:none;}
-  .element-chip:hover{background:rgba(30,127,92,0.16);border-color:rgba(30,127,92,0.4);}
-  .element-chip svg{color:rgba(255,255,255,0.75);}
-  .element-chip:hover svg{color:var(--emerald);}
-  .element-chip-label{font-size:9.5px;font-weight:600;color:rgba(255,255,255,0.75);text-align:center;line-height:1.2;}
-
-  .canvas-wrap{flex:1;position:relative;overflow:auto;background:var(--canvas);}
-  .canvas{position:relative;width:1600px;height:1100px;background-image:radial-gradient(circle, #DDE1E6 1px, transparent 1px);background-size:18px 18px;background-color:#fff;}
-  .empty-hint{position:absolute;top:40px;left:40px;max-width:260px;color:var(--text-faint);font-size:12px;line-height:1.6;pointer-events:none;}
-
-  .dash-el{cursor:move;transition:box-shadow .12s ease;}
-  .dash-el.selected{box-shadow:0 0 0 2px var(--emerald), 0 0 0 5px var(--emerald-soft);}
-  .resize-handle{position:absolute;width:10px;height:10px;background:var(--emerald);border:2px solid #fff;border-radius:3px;display:none;z-index:5;}
-  .dash-el.selected .resize-handle{display:block;}
-  .resize-handle.top-left{top:-5px;left:-5px;cursor:nwse-resize;}
-  .resize-handle.top{top:-5px;left:50%;transform:translateX(-50%);cursor:ns-resize;}
-  .resize-handle.top-right{top:-5px;right:-5px;cursor:nesw-resize;}
-  .resize-handle.right{right:-5px;top:50%;transform:translateY(-50%);cursor:ew-resize;}
-  .resize-handle.bottom-right{bottom:-5px;right:-5px;cursor:nwse-resize;}
-  .resize-handle.bottom{bottom:-5px;left:50%;transform:translateX(-50%);cursor:ns-resize;}
-  .resize-handle.bottom-left{bottom:-5px;left:-5px;cursor:nesw-resize;}
-  .resize-handle.left{left:-5px;top:50%;transform:translateY(-50%);cursor:ew-resize;}
-
-  .prop-panel{position:absolute;width:270px;background:var(--panel);border-radius:12px;box-shadow:var(--shadow-lg);border:1px solid var(--line);z-index:9000;overflow:hidden;}
-  .prop-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink);cursor:grab;}
-  .prop-title{color:#fff;font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;}
-  .prop-close{width:18px;height:18px;border-radius:5px;background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.6);cursor:pointer;font-size:12px;}
-  .prop-tabs{display:flex;border-bottom:1px solid var(--line);background:#FAFBFC;}
-  .prop-tab{flex:1;padding:8px 0;text-align:center;font-size:10.5px;font-weight:600;color:var(--text-faint);cursor:pointer;border-bottom:2px solid transparent;}
-  .prop-tab.active{color:var(--emerald);border-bottom-color:var(--emerald);}
-  .prop-body{padding:12px;max-height:320px;overflow-y:auto;}
-  .field{margin-bottom:11px;}
-  .field:last-child{margin-bottom:0;}
-  .field-label{font-size:10px;font-weight:600;color:var(--text-dim);margin-bottom:5px;}
-  .field-input{width:100%;padding:7px 9px;border-radius:7px;border:1px solid var(--line);font-size:11.5px;background:#fff;}
-  .field-input.mono{font-family:'JetBrains Mono',monospace;font-size:11px;}
-  .field-input:focus{outline:none;border-color:var(--emerald);box-shadow:0 0 0 3px var(--emerald-soft);}
-  .field-row{display:flex;gap:7px;}
-  .field-row .field{flex:1;}
-  .swatch-row{display:flex;gap:6px;}
-  .swatch{width:20px;height:20px;border-radius:6px;border:2px solid transparent;cursor:pointer;}
-  .swatch.active{border-color:var(--ink);}
-  .divider{height:1px;background:var(--line-soft);margin:11px 0;}
-  .btn-del{width:100%;padding:7px 0;border-radius:7px;border:1px solid #F3C9C4;background:#FBEAE8;color:#A83A32;font-size:11px;font-weight:600;cursor:pointer;}
-
-  .style-toggle{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:#fff;font-size:12px;cursor:pointer;color:var(--text-dim);}
-  .style-toggle.active{background:var(--ink);color:#fff;border-color:var(--ink);}
-  .style-toggle:hover:not(.active){border-color:var(--emerald);}
-
-  /* Shape type specific buttons */
-  .shape-type-btn{width:60px;height:60px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:10px;}
-  .shape-type-btn svg{width:100%;height:100%;}
-  .shape-type-btn.active{border-color:var(--emerald);box-shadow:0 0 0 3px rgba(30,127,92,0.15);}
-  .shape-type-btn:hover:not(.active){border-color:var(--emerald);}
-
-  .color-swatch-btn{width:100%;height:34px;border-radius:7px;border:1px solid var(--line);cursor:pointer;display:flex;align-items:center;padding:0 10px;gap:8px;background:#fff;}
-  .color-swatch-btn .chip{width:18px;height:18px;border-radius:5px;border:1px solid rgba(0,0,0,0.12);flex-shrink:0;background-size:8px 8px;}
-  .color-swatch-btn .hex-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
-
-  .color-picker-popover{position:fixed;width:236px;background:#20262F;border-radius:12px;box-shadow:var(--shadow-lg);padding:12px;z-index:2000;}
-  .sv-canvas-wrap{position:relative;border-radius:8px;overflow:hidden;line-height:0;}
-  .sv-canvas-wrap canvas{display:block;cursor:crosshair;}
-  .sv-cursor{position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,0.4);transform:translate(-6px,-6px);pointer-events:none;}
-  .hue-canvas-wrap{position:relative;margin-top:10px;line-height:0;}
-  .hue-canvas-wrap canvas{display:block;border-radius:6px;cursor:pointer;}
-  .hue-cursor{position:absolute;top:-2px;width:4px;height:16px;background:#fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,0.4);transform:translateX(-2px);pointer-events:none;}
-  .recent-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
-  .recent-swatch{width:18px;height:18px;border-radius:5px;cursor:pointer;border:1px solid rgba(255,255,255,0.15);}
-  .recent-label{font-size:9.5px;color:rgba(255,255,255,0.4);margin-top:8px;margin-bottom:2px;}
-
-  .icon-btn-sm{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.65);display:flex;align-items:center;justify-content:center;cursor:pointer;}
-  .icon-btn-sm:disabled{opacity:0.3;cursor:default;}
-  .icon-btn-sm:not(:disabled):hover{background:rgba(255,255,255,0.1);}
-
-  .guide-v{position:absolute;top:0;bottom:0;width:1px;background:var(--emerald);display:none;z-index:200;pointer-events:none;}
-  .guide-h{position:absolute;left:0;right:0;height:1px;background:var(--emerald);display:none;z-index:200;pointer-events:none;}
-
-  .ctx-menu{position:fixed;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-lg);z-index:1000;overflow:hidden;min-width:140px;font-size:11.5px;}
-  .ctx-item{padding:9px 12px;cursor:pointer;}
-  .ctx-item:hover{background:var(--emerald-soft);}
-  .ctx-item.danger{color:#A83A32;}
-  .ctx-item.danger:hover{background:#FBEAE8;}
-  .icon-picker {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    max-height: 200px;
-    overflow-y: auto;
-    margin-top: 6px;
-  }
-  .icon-picker-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid var(--line);
-    cursor: pointer;
-    transition: all 0.12s ease;
-  }
-  .icon-picker-item:hover {
-    border-color: var(--emerald);
-    background: var(--emerald-soft);
-  }
-  .icon-picker-item.active {
-    border-color: var(--emerald);
-    background: var(--emerald-soft);
-  }
-  
-  /* Icon Preview Button */
-  .icon-preview-btn {
-    width: 100%;
-    height: 64px;
-    border-radius: 8px;
-    border: 1px solid var(--line);
-    background: #fff;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.12s ease;
-  }
-  
-  .icon-preview-btn:hover {
-    border-color: var(--emerald);
-    background: var(--emerald-soft);
-  }
-  
-  .icon-preview-btn i {
-    width: 40px !important;
-    height: 40px !important;
-  }
-  
-  /* Icon Picker Modal */
-  .icon-picker-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-  
-  .icon-picker-modal {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 48px -12px rgba(0,0,0,0.28);
-  }
-  
-  .icon-picker-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  
-  .icon-picker-modal-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    font-family: 'Space Grotesk', sans-serif;
-    color: var(--ink);
-  }
-  
-  .icon-picker-modal-close {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    border: none;
-    background: rgba(0,0,0,0.05);
-    color: var(--text-faint);
-    cursor: pointer;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .icon-picker-modal-close:hover {
-    background: rgba(0,0,0,0.1);
-    color: var(--text);
-  }
-  
-  .icon-picker-modal-search {
-    width: 100%;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--line);
-    font-size: 13px;
-    margin-bottom: 16px;
-    font-family: 'Inter', sans-serif;
-  }
-  
-  .icon-picker-modal-search:focus {
-    outline: none;
-    border-color: var(--emerald);
-    box-shadow: 0 0 0 3px var(--emerald-soft);
-  }
-  
-  .icon-picker-modal-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
-    overflow-y: auto;
-    max-height: 50vh;
-    padding-right: 4px;
-  }
-  
-  .icon-picker-modal-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--line);
-    cursor: pointer;
-    transition: all 0.12s ease;
-    aspect-ratio: 1;
-  }
-  
-  .icon-picker-modal-item:hover {
-    border-color: var(--emerald);
-    background: var(--emerald-soft);
-  }
-  
-  .icon-picker-modal-item.active {
-    border-color: var(--emerald);
-    background: var(--emerald-soft);
-  }
-  
-  /* Chart Picker Styles */
-  .chart-picker-view {
-    display: none;
-  }
-  
-  .chart-picker-view.active {
-    display: block;
-  }
-  
-  .chart-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  
-  .chart-chip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 12px 6px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.05);
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.12s ease;
-  }
-  
-  .chart-chip:hover {
-    background: rgba(30,127,92,0.16);
-    border-color: rgba(30,127,92,0.4);
-  }
-  
-  .chart-chip svg {
-    color: rgba(255,255,255,0.75);
-    width: 24px;
-    height: 24px;
-  }
-  
-  .chart-chip:hover svg {
-    color: var(--emerald);
-  }
-  
-  .chart-chip-label {
-    font-size: 10.5px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.75);
-    text-align: center;
-    line-height: 1.2;
-  }
-  
-  .view-toggle {
-    display: flex;
-    gap: 3px;
-    padding: 0 6px 8px 6px;
-  }
-  
-  .view-toggle-btn {
-    flex: 1;
-    min-width: 0;
-    padding: 6px 2px;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.05);
-    border: none;
-    color: rgba(255,255,255,0.6);
-    font-size: 9.5px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    transition: all 0.12s ease;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  .view-toggle-btn.active {
-    background: var(--emerald);
-    color: #fff;
-  }
-  
-  .view-toggle-btn:hover:not(.active) {
-    background: rgba(30,127,92,0.16);
+  const SYSTEM_FONTS = new Set(['Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma','Trebuchet MS']);
+  const loadedFonts = new Set(['Inter','Space Grotesk','JetBrains Mono']); // already linked in <head> by both surfaces
+  function ensureFontLoaded(font){
+    if (!font || SYSTEM_FONTS.has(font) || loadedFonts.has(font)) return;
+    loadedFonts.add(font);
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=' + font.replace(/ /g,'+') + ':wght@400;500;600;700&display=swap';
+    document.head.appendChild(link);
   }
 
-  .subbar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--ink-soft);border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;}
-  .subbar-back{width:26px;height:26px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.7);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
-  .subbar-back:hover{background:rgba(255,255,255,0.1);}
-  #dashTitleText{color:#fff;font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif;flex:1;cursor:text;padding:4px 6px;border-radius:5px;}
-  #dashTitleText:hover{background:rgba(255,255,255,0.06);}
-  .view-edit-btn{background:var(--emerald);color:#fff;border:none;font-size:10.5px;font-weight:600;padding:7px 14px;border-radius:6px;cursor:pointer;flex-shrink:0;}
-  .view-edit-btn:hover{opacity:0.9;}
-
-  .view-mode .rail{display:none;}
-  .view-mode .publish-btn, .view-mode .publish-status, .view-mode #undoBtn, .view-mode #redoBtn{display:none;}
-  .view-mode .dash-el{pointer-events:none;}
-  .view-mode .empty-hint{display:none;}
-  .view-mode .canvas{background-image:none;background-color:#fff;}
-
-  .layers-list{display:flex;flex-direction:column;gap:4px;}
-  .layer-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.05);cursor:pointer;}
-  .layer-row:hover{background:rgba(30,127,92,0.16);border-color:rgba(30,127,92,0.4);}
-  .layer-row.active{background:rgba(30,127,92,0.22);border-color:var(--emerald);}
-  .layer-row svg{color:rgba(255,255,255,0.6);flex-shrink:0;}
-  .layer-name{flex:1;font-size:11px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .layer-name-input{flex:1;font-size:11px;background:rgba(255,255,255,0.08);border:1px solid var(--emerald);border-radius:4px;color:#fff;padding:2px 5px;font-family:'Inter',sans-serif;}
-  .layers-empty{padding:16px 8px;color:rgba(255,255,255,0.3);font-size:10.5px;line-height:1.6;}
-
-  .view-mode .topbar{display:none;}
-  .view-mode .subbar{
-    background: #F5F6F8;
-    border-bottom: 1px solid #E4E7EB;
-  }
-  .view-mode .subbar .subbar-back{
-    background: #FFFFFF;
-    border: 1px solid #E4E7EB;
-    color: #1C232B;
-  }
-  .view-mode #dashTitleText{
-    color: #1C232B;
-  }
-  .view-mode .view-edit-btn{
-    background: #1E7F5C;
-  }
-
-  .home-view{display:none;flex-direction:column;height:100vh;width:100vw;background:var(--canvas);}
-  .home-topbar{height:52px;background:var(--ink);display:flex;align-items:center;padding:0 14px;flex-shrink:0;}
-  .home-body{flex:1;overflow-y:auto;padding:18px;}
-  .home-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-  .home-title{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:var(--text);}
-  .dashboard-list{display:flex;flex-direction:column;gap:8px;}
-  .dash-card{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:border-color .12s ease;}
-  .dash-card:hover{border-color:var(--emerald);}
-  .dash-card-name{font-size:12.5px;font-weight:600;color:var(--text);}
-  .dash-card-date{font-size:10px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;margin-top:2px;}
-  .dash-card-actions{display:flex;gap:6px;flex-shrink:0;}
-  .dash-card-btn{background:#F5F6F8;border:1px solid var(--line);color:var(--text-dim);font-size:10.5px;font-weight:600;padding:6px 10px;border-radius:6px;cursor:pointer;}
-  .dash-card-btn:hover{border-color:var(--emerald);color:var(--emerald);}
-  .dash-card-btn.danger:hover{border-color:#D2534A;color:#D2534A;background:#FBEAE8;}
-  .empty-state-home{padding:40px 20px;text-align:center;color:var(--text-faint);font-size:12px;line-height:1.6;}
-</style>
-</head>
-<body>
-<div id="homeView" class="home-view">
-  <div class="home-topbar">
-    <div class="brand"><div class="brand-mark">O</div>Overlay</div>
-    <div class="workbook-name" id="homeWorkbookName" style="margin-left:10px;">Connecting…</div>
-  </div>
-  <div class="home-body">
-    <div class="home-header-row">
-      <div class="home-title">Your dashboards</div>
-      <button class="publish-btn" onclick="createNewDashboard()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-        New dashboard
-      </button>
-    </div>
-    <div id="dashboardList" class="dashboard-list"></div>
-  </div>
-</div>
-<div id="app" style="display:none;">
-  <div class="topbar">
-    <div>
-      <div class="brand"><div class="brand-mark">O</div>Overlay</div>
-      <div class="workbook-name" id="workbookName">Connecting…</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <button class="icon-btn-sm" id="undoBtn" onclick="undo()" disabled title="Undo (Ctrl+Z)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
-      </button>
-      <button class="icon-btn-sm" id="redoBtn" onclick="redo()" disabled title="Redo (Ctrl+Y)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-3-7.7L21 8"/></svg>
-      </button>
-    </div>
-    <div style="text-align:right;">
-      <button class="publish-btn" id="publishBtn" onclick="saveDashboard()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-        Publish
-      </button>
-      <div class="publish-status" id="publishStatus">Not published yet</div>
-    </div>
-  </div>
-
-
-  <div class="subbar">
-    <button class="subbar-back" onclick="backToHome()" title="Back to dashboards">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span id="dashTitleText" onclick="renameDashboard()" title="Click to rename">Untitled dashboard</span>
-    <button class="view-edit-btn" id="editToggleBtn" onclick="toggleViewEditMode()">View</button>
-  </div>
-  <div class="body-row">
-    <div class="rail">
-      <div class="rail-scroll" id="railScroll">
-        <!-- View Toggle -->
-        <div class="view-toggle" style="padding-top:10px;">
-          <button class="view-toggle-btn active" id="elementsViewBtn" onclick="switchToElementsView()">Elements</button>
-          <button class="view-toggle-btn" id="chartsViewBtn" onclick="switchToChartsView()">Charts</button>
-          <button class="view-toggle-btn" id="layersViewBtn" onclick="switchToLayersView()">Layers</button>
-        </div>
-        
-        <!-- Elements View -->
-        <div id="elementsView" class="chart-picker-view active">
-          <div class="group-label" style="padding-top:0;">Visual</div>
-          <div class="element-grid">
-            <div class="element-chip" onclick="addElement('button')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/></svg><span class="element-chip-label">Button</span></div>
-            <div class="element-chip" onclick="addElement('icon')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><span class="element-chip-label">Icon</span></div>
-            <div class="element-chip" onclick="addElement('image')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg><span class="element-chip-label">Image</span></div>
-            <div class="element-chip" onclick="addElement('text')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6h14M12 6v14"/></svg><span class="element-chip-label">Text</span></div>
-            <div class="element-chip" onclick="addElement('shape')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 18H3z"/></svg><span class="element-chip-label">Shape</span></div>
-          </div>
-          <div class="group-label">Containers</div>
-          <div class="element-grid">
-            <div class="element-chip" onclick="addElement('group')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="element-chip-label">Group</span></div>
-            <div class="element-chip" onclick="addElement('repeating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4"/><rect x="3" y="10" width="18" height="4"/><rect x="3" y="16" width="18" height="4"/></svg><span class="element-chip-label">Repeating</span></div>
-            <div class="element-chip" onclick="addElement('popup')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/></svg><span class="element-chip-label">Popup</span></div>
-            <div class="element-chip" onclick="addElement('floating')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="14" height="12" rx="2"/></svg><span class="element-chip-label">Floating</span></div>
-          </div>
-          <div class="group-label">Input forms</div>
-          <div class="element-grid">
-            <div class="element-chip" onclick="addElement('input')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Input</span></div>
-            <div class="element-chip" onclick="addElement('multiline')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/></svg><span class="element-chip-label">Multiline</span></div>
-            <div class="element-chip" onclick="addElement('dropdown')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="1"/></svg><span class="element-chip-label">Dropdown</span></div>
-            <div class="element-chip" onclick="addElement('checkbox')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/></svg><span class="element-chip-label">Checkbox</span></div>
-            <div class="element-chip" onclick="addElement('slider')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="14" cy="12" r="3"/></svg><span class="element-chip-label">Slider</span></div>
-            <div class="element-chip" onclick="addElement('date')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/></svg><span class="element-chip-label">Date</span></div>
-            <div class="element-chip" onclick="addElement('upload')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Upload</span></div>
-          </div>
-        </div>
-        
-        <!-- Charts View -->
-        <div id="chartsView" class="chart-picker-view">
-          <div class="group-label" style="padding-top:0;">Chart Types</div>
-          <div class="chart-grid" id="chartGrid">
-            <!-- Charts will be populated by JS -->
-          </div>
-        </div>
-
-        <!-- Layers View -->
-        <div id="layersView" class="chart-picker-view">
-          <div class="group-label" style="padding-top:0;">Layers <span style="font-weight:400;text-transform:none;letter-spacing:0;color:rgba(255,255,255,0.3);">top = front</span></div>
-          <div id="layersList" class="layers-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="canvas-wrap" id="canvasWrap">
-      <div class="canvas" id="canvas">
-        <div class="empty-hint" id="emptyHint">Click an element on the left to drop it here. Drag to move, corner-drag to resize, click to open its setup panel. Right-click to duplicate.</div>
-        <div class="guide-v" id="guideV"></div>
-        <div class="guide-h" id="guideH"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-let elements = {};      // id -> data object (matches OverlayElements schema)
-let selectedId = null;
-let zTop = 10;
-let panelEl = null;
-let panelPos = null;    // remembers where the user last placed the panel; null = not yet manually placed
-let history = [];
-let historyIndex = -1;
-const MAX_HISTORY = 60;
-let currentDashboardId = null;
-let isViewMode = false;
-
-const canvas = document.getElementById('canvas');
-
-// View Switching
-function switchToElementsView() {
-  document.getElementById('elementsView').classList.add('active');
-  document.getElementById('chartsView').classList.remove('active');
-  document.getElementById('layersView').classList.remove('active');
-  document.getElementById('elementsViewBtn').classList.add('active');
-  document.getElementById('chartsViewBtn').classList.remove('active');
-  document.getElementById('layersViewBtn').classList.remove('active');
-}
-
-function switchToChartsView() {
-  document.getElementById('chartsView').classList.add('active');
-  document.getElementById('elementsView').classList.remove('active');
-  document.getElementById('layersView').classList.remove('active');
-  document.getElementById('chartsViewBtn').classList.add('active');
-  document.getElementById('elementsViewBtn').classList.remove('active');
-  document.getElementById('layersViewBtn').classList.remove('active');
-}
-
-function switchToLayersView() {
-  document.getElementById('layersView').classList.add('active');
-  document.getElementById('elementsView').classList.remove('active');
-  document.getElementById('chartsView').classList.remove('active');
-  document.getElementById('layersViewBtn').classList.add('active');
-  document.getElementById('elementsViewBtn').classList.remove('active');
-  document.getElementById('chartsViewBtn').classList.remove('active');
-  renderLayersList();
-}
-
-// ---------------- Element tree / layers list ----------------
-const typeCounters = {};
-function nextDefaultName(type){
-  typeCounters[type] = (typeCounters[type] || 0) + 1;
-  const label = (window.OverlayElements && OverlayElements.TYPE_LABELS[type]) || type;
-  return label + ' ' + typeCounters[type];
-}
-
-const LAYER_ICON_PATHS = {
-  button:'<rect x="3" y="8" width="18" height="8" rx="2"/>',
-  icon:'<circle cx="12" cy="12" r="9"/>',
-  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5-9 9"/>',
-  text:'<path d="M5 6h14M12 6v14"/>',
-  shape:'<path d="M12 3l9 18H3z"/>',
-  graph:'<path d="M4 19V9M12 19V5M20 19v-7"/>',
-  group:'<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/>',
-  repeating:'<rect x="3" y="4" width="18" height="4"/><rect x="3" y="10" width="18" height="4"/><rect x="3" y="16" width="18" height="4"/>',
-  popup:'<rect x="4" y="6" width="16" height="12" rx="2"/>',
-  floating:'<rect x="6" y="6" width="14" height="12" rx="2"/>',
-  input:'<rect x="3" y="9" width="18" height="6" rx="1"/>',
-  multiline:'<rect x="3" y="5" width="18" height="14" rx="1"/>',
-  dropdown:'<rect x="3" y="8" width="18" height="8" rx="1"/>',
-  checkbox:'<rect x="4" y="4" width="16" height="16" rx="3"/>',
-  slider:'<path d="M4 12h16"/><circle cx="14" cy="12" r="3"/>',
-  date:'<rect x="3" y="5" width="18" height="16" rx="2"/>',
-  upload:'<path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/>'
-};
-function renderLayersList(){
-  const listEl = document.getElementById('layersList');
-  if (!listEl) return;
-  const items = Object.values(elements)
-    .map(el => ({ el, z: el.z || 0 }))
-    .sort((a,b) => b.z - a.z);
-  if (!items.length){
-    listEl.innerHTML = '<div class="layers-empty">No elements yet. Add one from the Elements tab and it\'ll show up here.</div>';
-    return;
-  }
-  listEl.innerHTML = items.map(({el}) => `
-    <div class="layer-row ${selectedId===el.id?'active':''}" data-layer-id="${el.id}">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${LAYER_ICON_PATHS[el.type] || '<circle cx="12" cy="12" r="3"/>'}</svg>
-      <span class="layer-name" data-layer-name="${el.id}">${escapeHtml(el.name || OverlayElements.TYPE_LABELS[el.type])}</span>
-    </div>
-  `).join('');
-  listEl.querySelectorAll('.layer-row').forEach(row => {
-    const id = row.dataset.layerId;
-    row.addEventListener('click', (e) => {
-      if (e.target.classList.contains('layer-name') && e.detail === 2) return; // handled by dblclick
-      selectElement(id);
-    });
-    const nameSpan = row.querySelector('.layer-name');
-    nameSpan.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      startRenameLayer(id, nameSpan);
-    });
-  });
-}
-
-function startRenameLayer(id, span){
-  const current = elements[id].name || OverlayElements.TYPE_LABELS[elements[id].type];
-  const input = document.createElement('input');
-  input.className = 'layer-name-input';
-  input.value = current;
-  span.replaceWith(input);
-  input.focus(); input.select();
-  function commit(){
-    elements[id].name = input.value.trim() || OverlayElements.TYPE_LABELS[elements[id].type];
-    pushHistory();
-    renderLayersList();
-    if (panelEl && selectedId === id) renderTab('appearance', id);
-  }
-  input.addEventListener('blur', commit);
-  input.addEventListener('keydown', (e)=>{ if (e.key==='Enter') input.blur(); });
-}
-
-// Populate Chart Grid
-function populateChartGrid() {
-  const chartGrid = document.getElementById('chartGrid');
-  if (!window.OverlayElements || !window.OverlayElements.CHART_TYPES) return;
-  
-  chartGrid.innerHTML = window.OverlayElements.CHART_TYPES.map(chart => `
-    <div class="chart-chip" onclick="addChartElement('${chart.id}')">
-      <i data-lucide="${chart.icon}"></i>
-      <span class="chart-chip-label">${chart.label}</span>
-    </div>
-  `).join('');
-  
-  if (window.lucide) {
-    window.lucide.createIcons();
-  }
-}
-
-// Add Chart Element
-function addChartElement(chartTypeId) {
-  const el = OverlayElements.makeElement('graph', {
-    left: 40 + (Object.keys(elements).length * 24) % 500,
-    top: 30 + (Object.keys(elements).length * 30) % 350,
-    meta: { chartType: chartTypeId },
-    name: nextDefaultName('graph')
-  });
-  elements[el.id] = el;
-  renderElement(el);
-  selectElement(el.id);
-  document.getElementById('emptyHint').style.display = 'none';
-  pushHistory();
-}
-
-Office.onReady(async (info) => {
-  const nameEl = document.getElementById('workbookName');
-  const homeNameEl = document.getElementById('homeWorkbookName');
-  if (info.host === Office.HostType.Excel) {
-    Excel.run(async (context) => {
-      const wb = context.workbook;
-      wb.load('name');
-      await context.sync();
-      nameEl.textContent = wb.name || 'Untitled workbook';
-      if (homeNameEl) homeNameEl.textContent = wb.name || 'Untitled workbook';
-    }).catch((e)=>{ nameEl.textContent = 'Excel connected'; console.error(e); });
-  } else {
-    nameEl.textContent = 'Preview (not running in Excel)';
-    if (homeNameEl) homeNameEl.textContent = 'Preview (not running in Excel)';
-  }
-  populateChartGrid();
-  await showHome();
-});
-
-// ---------------- Routing / multi-dashboard data layer ----------------
-async function ensureDataSheet(context){
-  const sheets = context.workbook.worksheets;
-  sheets.load('items/name');
-  await context.sync();
-  let existing = sheets.items.find(s => s.name === '_OverlayData');
-  if (!existing) {
-    const sheet = sheets.add('_OverlayData');
-    sheet.visibility = Excel.SheetVisibility.veryHidden;
-    sheet.getRange('A1:D1').values = [['id','name','json','updatedAt']];
-    await context.sync();
-    return sheet;
-  }
-  const sheet = sheets.getItem('_OverlayData');
-  const a1 = sheet.getRange('A1');
-  a1.load('values');
-  await context.sync();
-  const headerVal = a1.values[0][0];
-  if (headerVal !== 'id') {
-    // Old single-dashboard format from before the Home screen existed — migrate it in
-    // so nothing already published gets silently lost.
-    let oldJson = '[]';
-    if (typeof headerVal === 'string' && headerVal.trim().startsWith('[')) oldJson = headerVal;
-    sheet.getRange('A1:D1').values = [['id','name','json','updatedAt']];
-    sheet.getRange('A2:D2').values = [[
-      'dash_' + Math.random().toString(36).slice(2,9), 'My first dashboard', oldJson, new Date().toISOString()
-    ]];
-    await context.sync();
-  }
-  return sheet;
-}
-
-async function listDashboards(){
-  return await Excel.run(async (context) => {
-    const sheet = await ensureDataSheet(context);
-    const used = sheet.getUsedRangeOrNullObject();
-    used.load('values,isNullObject');
-    await context.sync();
-    if (used.isNullObject || used.values.length < 2) return [];
-    return used.values.slice(1).filter(r => r[0]).map(r => ({ id:r[0], name:r[1], json:r[2], updatedAt:r[3] }));
-  });
-}
-
-async function createNewDashboard(){
-  const id = 'dash_' + Math.random().toString(36).slice(2,9);
-  await Excel.run(async (context) => {
-    const sheet = await ensureDataSheet(context);
-    const used = sheet.getUsedRangeOrNullObject();
-    used.load('rowCount,isNullObject');
-    await context.sync();
-    const nextRow = used.isNullObject ? 2 : used.rowCount + 1;
-    sheet.getRange('A' + nextRow + ':D' + nextRow).values = [[id, 'Untitled dashboard', '[]', new Date().toISOString()]];
-    await context.sync();
-  });
-  await openDashboard(id, 'edit');
-}
-
-async function loadDashboardById(id){
-  return await Excel.run(async (context) => {
-    const sheet = await ensureDataSheet(context);
-    const used = sheet.getUsedRangeOrNullObject();
-    used.load('values,isNullObject');
-    await context.sync();
-    if (used.isNullObject) return null;
-    const rows = used.values;
-    for (let i=1;i<rows.length;i++){ if (rows[i][0]===id) return { id:rows[i][0], name:rows[i][1], json:rows[i][2], updatedAt:rows[i][3] }; }
-    return null;
-  });
-}
-
-async function saveDashboard(){
-  if (!currentDashboardId) return;
-  const statusEl = document.getElementById('publishStatus');
-  if (statusEl) statusEl.textContent = 'Saving…';
-  try{
-    const payload = JSON.stringify(Object.values(elements));
-    await Excel.run(async (context) => {
-      const sheet = await ensureDataSheet(context);
-      const used = sheet.getUsedRangeOrNullObject();
-      used.load('values,isNullObject');
-      await context.sync();
-      if (used.isNullObject) return;
-      const rows = used.values;
-      for (let i=1;i<rows.length;i++){
-        if (rows[i][0]===currentDashboardId){
-          const rowNum = i+1;
-          sheet.getRange('C'+rowNum).values = [[payload]];
-          sheet.getRange('D'+rowNum).values = [[new Date().toISOString()]];
-          break;
-        }
-      }
-      await context.sync();
-    });
-    if (statusEl) statusEl.textContent = 'Saved at ' + new Date().toLocaleTimeString();
-  } catch(err){
-    console.error(err);
-    if (statusEl) statusEl.textContent = 'Save failed: ' + (err.message||err);
-  }
-}
-
-async function deleteDashboard(id, evt){
-  if (evt) evt.stopPropagation();
-  if (!confirm('Delete this dashboard? This cannot be undone.')) return;
-  await Excel.run(async (context) => {
-    const sheet = await ensureDataSheet(context);
-    const used = sheet.getUsedRangeOrNullObject();
-    used.load('values,isNullObject');
-    await context.sync();
-    if (used.isNullObject) return;
-    const rows = used.values;
-    for (let i=1;i<rows.length;i++){
-      if (rows[i][0]===id){ sheet.getRangeByIndexes(i,0,1,4).delete(Excel.DeleteShiftDirection.up); break; }
-    }
-    await context.sync();
-  });
-  renderHomeList();
-}
-
-function escapeHtml(s){ const d=document.createElement('div'); d.textContent = s==null?'':s; return d.innerHTML; }
-
-async function renderHomeList(){
-  const listEl = document.getElementById('dashboardList');
-  listEl.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:11px;">Loading…</div>';
-  const dashboards = await listDashboards();
-  if (!dashboards.length){
-    listEl.innerHTML = '<div class="empty-state-home">No dashboards yet. Click "New dashboard" to design your first one.</div>';
-    return;
-  }
-  listEl.innerHTML = dashboards.map(d => `
-    <div class="dash-card" onclick="openDashboard('${d.id}','view')">
-      <div class="dash-card-main">
-        <div class="dash-card-name">${escapeHtml(d.name || 'Untitled dashboard')}</div>
-        <div class="dash-card-date">Updated ${d.updatedAt ? new Date(d.updatedAt).toLocaleString() : '—'}</div>
-      </div>
-      <div class="dash-card-actions">
-        <button class="dash-card-btn" onclick="event.stopPropagation(); openDashboard('${d.id}','edit')">Edit</button>
-        <button class="dash-card-btn danger" onclick="deleteDashboard('${d.id}', event)">Delete</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function showHome(){
-  currentDashboardId = null;
-  document.getElementById('homeView').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  await renderHomeList();
-}
-
-async function openDashboard(id, mode){
-  currentDashboardId = id;
-  document.getElementById('homeView').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-
-  document.querySelectorAll('.dash-el').forEach(n => n.remove());
-  closePanel();
-  elements = {};
-  history = []; historyIndex = -1;
-
-  const rec = await loadDashboardById(id);
-  const titleEl = document.getElementById('dashTitleText');
-  if (titleEl) titleEl.textContent = rec ? (rec.name || 'Untitled dashboard') : 'Untitled dashboard';
-
-  if (rec && rec.json){
-    try{
-      const arr = JSON.parse(rec.json);
-      arr.forEach(el => { elements[el.id] = el; renderElement(el); });
-      document.getElementById('emptyHint').style.display = arr.length ? 'none' : 'block';
-    } catch(e){ console.error('Could not parse saved dashboard JSON:', e); }
-  } else {
-    document.getElementById('emptyHint').style.display = 'block';
-  }
-  pushHistory();
-  setViewMode(mode === 'view');
-}
-
-function backToHome(){ showHome(); }
-
-function setViewMode(isView){
-  isViewMode = isView;
-  document.getElementById('app').classList.toggle('view-mode', isView);
-  const btn = document.getElementById('editToggleBtn');
-  if (btn) btn.textContent = isView ? 'Edit' : 'View';
-  if (isView) closePanel();
-}
-
-function toggleViewEditMode(){
-  if (!isViewMode) saveDashboard(); // autosave when leaving edit mode
-  setViewMode(!isViewMode);
-}
-
-function renameDashboard(){
-  const span = document.getElementById('dashTitleText');
-  if (!span || isViewMode) return;
-  const current = span.textContent;
-  const input = document.createElement('input');
-  input.value = current;
-  input.id = 'dashTitleInput';
-  input.style.cssText = 'width:180px;font-size:12px;padding:4px 8px;border-radius:5px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#fff;font-family:Space Grotesk,sans-serif;';
-  span.replaceWith(input);
-  input.focus(); input.select();
-  function commit(){
-    const newName = input.value.trim() || 'Untitled dashboard';
-    const newSpan = document.createElement('span');
-    newSpan.id = 'dashTitleText';
-    newSpan.title = 'Click to rename';
-    newSpan.textContent = newName;
-    newSpan.onclick = renameDashboard;
-    input.replaceWith(newSpan);
-    updateDashboardName(newName);
-  }
-  input.addEventListener('blur', commit);
-  input.addEventListener('keydown', (e)=>{ if (e.key==='Enter') input.blur(); });
-}
-
-async function updateDashboardName(name){
-  if (!currentDashboardId) return;
-  await Excel.run(async (context) => {
-    const sheet = await ensureDataSheet(context);
-    const used = sheet.getUsedRangeOrNullObject();
-    used.load('values,isNullObject');
-    await context.sync();
-    if (used.isNullObject) return;
-    const rows = used.values;
-    for (let i=1;i<rows.length;i++){
-      if (rows[i][0]===currentDashboardId){ sheet.getRange('B'+(i+1)).values = [[name]]; break; }
-    }
-    await context.sync();
-  });
-}
-
-document.addEventListener('keydown', (e)=>{
-  const isUndo = (e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !e.shiftKey;
-  const isRedo = (e.ctrlKey||e.metaKey) && (e.key.toLowerCase()==='y' || (e.key.toLowerCase()==='z' && e.shiftKey));
-  if (isUndo) { e.preventDefault(); undo(); }
-  else if (isRedo) { e.preventDefault(); redo(); }
-});
-
-// ---------------- Color picker (real gradient + hue + hex, not fixed swatches) ----------------
-let recentColors = [];
-function hsvToRgb(h,s,v){
-  h = h/360; let r,g,b,i,f,p,q,t;
-  i = Math.floor(h*6); f = h*6-i;
-  p = v*(1-s); q = v*(1-f*s); t = v*(1-(1-f)*s);
-  switch(i%6){
-    case 0: r=v;g=t;b=p;break; case 1: r=q;g=v;b=p;break; case 2: r=p;g=v;b=t;break;
-    case 3: r=p;g=q;b=v;break; case 4: r=t;g=p;b=v;break; case 5: r=v;g=p;b=q;break;
-  }
-  return { r:Math.round(r*255), g:Math.round(g*255), b:Math.round(b*255) };
-}
-function rgbToHex(r,g,b){ return '#' + [r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase(); }
-function hexToRgb(hex){
-  hex = (hex||'#1E7F5C').replace('#','');
-  if (hex.length===3) hex = hex.split('').map(c=>c+c).join('');
-  return { r: parseInt(hex.substring(0,2),16)||0, g: parseInt(hex.substring(2,4),16)||0, b: parseInt(hex.substring(4,6),16)||0 };
-}
-function rgbToHsv(r,g,b){
-  r/=255; g/=255; b/=255;
-  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
-  let h, s = max===0?0:d/max, v=max;
-  if (max===min) h=0;
-  else { switch(max){ case r: h=(g-b)/d+(g<b?6:0); break; case g: h=(b-r)/d+2; break; default: h=(r-g)/d+4; } h/=6; }
-  return { h: h*360, s, v };
-}
-function drawSV(ctx,w,h,hue){
-  const rgb = hsvToRgb(hue,1,1);
-  ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`; ctx.fillRect(0,0,w,h);
-  let g1 = ctx.createLinearGradient(0,0,w,0);
-  g1.addColorStop(0,'rgba(255,255,255,1)'); g1.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.fillStyle=g1; ctx.fillRect(0,0,w,h);
-  let g2 = ctx.createLinearGradient(0,0,0,h);
-  g2.addColorStop(0,'rgba(0,0,0,0)'); g2.addColorStop(1,'rgba(0,0,0,1)');
-  ctx.fillStyle=g2; ctx.fillRect(0,0,w,h);
-}
-function drawHue(ctx,w,h){
-  let g = ctx.createLinearGradient(0,0,w,0);
-  [[0,'#FF0000'],[1/6,'#FFFF00'],[2/6,'#00FF00'],[3/6,'#00FFFF'],[4/6,'#0000FF'],[5/6,'#FF00FF'],[1,'#FF0000']]
-    .forEach(([pos,color])=>g.addColorStop(pos,color));
-  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-}
-function closeColorPicker(){ const p = document.getElementById('colorPickerPopover'); if (p) p.remove(); }
-function openColorPicker(anchor, initialHex, onChange, onCommit){
-  closeColorPicker();
-  const rgb0 = hexToRgb(initialHex);
-  let { h: hue, s: sat, v: val } = rgbToHsv(rgb0.r, rgb0.g, rgb0.b);
-
-  const pop = document.createElement('div');
-  pop.id = 'colorPickerPopover';
-  pop.className = 'color-picker-popover';
-  pop.innerHTML = `
-    <div class="sv-canvas-wrap"><canvas id="svCanvas" width="212" height="130"></canvas><div class="sv-cursor" id="svCursor"></div></div>
-    <div class="hue-canvas-wrap"><canvas id="hueCanvas" width="212" height="12"></canvas><div class="hue-cursor" id="hueCursor"></div></div>
-    <input class="field-input mono" id="hexInput" style="margin-top:10px;" value="${initialHex}">
-    <div class="recent-label">Recently used</div>
-    <div class="recent-row" id="recentRow"></div>
-  `;
-  document.body.appendChild(pop);
-  const rect = anchor.getBoundingClientRect();
-  let popLeft = rect.left;
-  if (popLeft + 236 > window.innerWidth) popLeft = window.innerWidth - 244;
-  pop.style.left = Math.max(6, popLeft) + 'px';
-  pop.style.top = (rect.bottom + 8) + 'px';
-
-  const svCanvas = document.getElementById('svCanvas'), svCtx = svCanvas.getContext('2d');
-  const hueCanvas = document.getElementById('hueCanvas'), hueCtx = hueCanvas.getContext('2d');
-  const svCursor = document.getElementById('svCursor'), hueCursor = document.getElementById('hueCursor');
-  const hexInput = document.getElementById('hexInput');
-
-  function redrawSV(){ drawSV(svCtx, 212, 130, hue); }
-  function updateCursors(){
-    svCursor.style.left = (sat*212) + 'px';
-    svCursor.style.top = ((1-val)*130) + 'px';
-    hueCursor.style.left = ((hue/360)*212) + 'px';
-  }
-  function currentHex(){ const c = hsvToRgb(hue, sat, val); return rgbToHex(c.r, c.g, c.b); }
-  function fire(){ const hex = currentHex(); hexInput.value = hex; onChange(hex); }
-
-  redrawSV(); drawHue(hueCtx, 212, 12); updateCursors();
-  renderRecent();
-
-  let draggingSV=false, draggingHue=false;
-  svCanvas.addEventListener('mousedown', (e)=>{ draggingSV=true; handleSV(e); });
-  hueCanvas.addEventListener('mousedown', (e)=>{ draggingHue=true; handleHue(e); });
-  function handleSV(e){
-    const r = svCanvas.getBoundingClientRect();
-    sat = Math.min(Math.max((e.clientX-r.left)/212,0),1);
-    val = 1 - Math.min(Math.max((e.clientY-r.top)/130,0),1);
-    updateCursors(); fire();
-  }
-  function handleHue(e){
-    const r = hueCanvas.getBoundingClientRect();
-    hue = Math.min(Math.max((e.clientX-r.left)/212,0),1) * 360;
-    redrawSV(); updateCursors(); fire();
-  }
-  function moveHandler(e){ if(draggingSV) handleSV(e); if(draggingHue) handleHue(e); }
-  function upHandler(){ draggingSV=false; draggingHue=false; }
-  document.addEventListener('mousemove', moveHandler);
-  document.addEventListener('mouseup', upHandler);
-
-  hexInput.addEventListener('change', ()=>{
-    const v = hexInput.value.trim();
-    if (/^#([0-9A-Fa-f]{6})$/.test(v)){
-      const c = hexToRgb(v); const hsv = rgbToHsv(c.r,c.g,c.b);
-      hue=hsv.h; sat=hsv.s; val=hsv.v;
-      redrawSV(); updateCursors(); onChange(v);
-    }
-  });
-
-  function renderRecent(){
-    document.getElementById('recentRow').innerHTML = recentColors.map(c=>
-      `<div class="recent-swatch" style="background:${c}" data-hex="${c}"></div>`).join('') || '<span style="font-size:10px;color:rgba(255,255,255,0.3);">None yet</span>';
-    document.querySelectorAll('.recent-swatch').forEach(sw=>{
-      sw.addEventListener('click', ()=>{
-        const hex = sw.dataset.hex;
-        const c = hexToRgb(hex); const hsv = rgbToHsv(c.r,c.g,c.b);
-        hue=hsv.h; sat=hsv.s; val=hsv.v;
-        redrawSV(); updateCursors(); fire();
-      });
-    });
-  }
-
-  function outsideClose(e){
-    if (!pop.contains(e.target) && e.target !== anchor && !anchor.contains(e.target)){
-      document.removeEventListener('mousedown', outsideClose, true);
-      document.removeEventListener('mousemove', moveHandler);
-      document.removeEventListener('mouseup', upHandler);
-      const hex = currentHex();
-      if (!recentColors.includes(hex)){ recentColors.unshift(hex); recentColors = recentColors.slice(0,12); }
-      pop.remove();
-      if (onCommit) onCommit();
-    }
-  }
-  setTimeout(()=>{ document.addEventListener('mousedown', outsideClose, true); }, 0);
-}
-
-// ---------------- Undo / redo ----------------
-function pushHistory(){
-  const snap = JSON.stringify(elements);
-  if (historyIndex >= 0 && history[historyIndex] === snap) return;
-  history = history.slice(0, historyIndex + 1);
-  history.push(snap);
-  historyIndex = history.length - 1;
-  if (history.length > MAX_HISTORY) { history.shift(); historyIndex--; }
-  updateUndoRedoButtons();
-  renderLayersList();
-}
-function restoreState(snap){
-  document.querySelectorAll('.dash-el').forEach(n => n.remove());
-  closePanel();
-  elements = JSON.parse(snap);
-  Object.values(elements).forEach(el => renderElement(el));
-  document.getElementById('emptyHint').style.display = Object.keys(elements).length ? 'none' : 'block';
-  renderLayersList();
-}
-function undo(){ if (historyIndex <= 0) return; historyIndex--; restoreState(history[historyIndex]); updateUndoRedoButtons(); }
-function redo(){ if (historyIndex >= history.length - 1) return; historyIndex++; restoreState(history[historyIndex]); updateUndoRedoButtons(); }
-function updateUndoRedoButtons(){
-  const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
-  if (u) u.disabled = historyIndex <= 0;
-  if (r) r.disabled = historyIndex >= history.length - 1;
-}
-
-// ---------------- Right-click context menu (duplicate / delete) ----------------
-function showContextMenu(x, y, id){
-  removeContextMenu();
-  const menu = document.createElement('div');
-  menu.id = 'ctxMenu';
-  menu.className = 'ctx-menu';
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
-  menu.innerHTML = `
-    <div class="ctx-item" onclick="duplicateElement('${id}')">Duplicate</div>
-    <div class="ctx-item" onclick="bringToFront('${id}')">Bring to Front</div>
-    <div class="ctx-item" onclick="sendToBack('${id}')">Send to Back</div>
-    <div class="ctx-item danger" onclick="deleteElement('${id}')">Delete</div>
-  `;
-  document.body.appendChild(menu);
-  setTimeout(()=>{ document.addEventListener('mousedown', removeContextMenu, { once:true }); }, 0);
-}
-function removeContextMenu(){ const m = document.getElementById('ctxMenu'); if (m) m.remove(); }
-
-// ---------------- Explicit stacking-order control ----------------
-// These are the ONLY actions that should change an element's z. Selecting,
-// editing appearance/data, dragging, or resizing must never touch z.
-function bringToFront(id){
-  removeContextMenu();
-  elements[id].z = zTop++;
-  redrawElement(elements[id]);
-  renderLayersList();
-  pushHistory();
-}
-function sendToBack(id){
-  removeContextMenu();
-  const minZ = Math.min(0, ...Object.values(elements).map(e => e.z || 0));
-  elements[id].z = minZ - 1;
-  redrawElement(elements[id]);
-  renderLayersList();
-  pushHistory();
-}
-function duplicateElement(id){
-  removeContextMenu();
-  const copy = JSON.parse(JSON.stringify(elements[id]));
-  copy.id = 'el_' + Math.random().toString(36).slice(2, 9);
-  copy.left += 16; copy.top += 16;
-  copy.name = nextDefaultName(copy.type);
-  copy.z = zTop++; // duplicate always lands above its source, not stuck at source's old layer
-  elements[copy.id] = copy;
-  renderElement(copy);
-  selectElement(copy.id);
-  pushHistory();
-}
-
-// ---------------- Add / render elements on canvas ----------------
-function addElement(type) {
-  const el = OverlayElements.makeElement(type, {
-    left: 40 + (Object.keys(elements).length * 24) % 500,
-    top: 30 + (Object.keys(elements).length * 30) % 350,
-    name: nextDefaultName(type)
-  });
-  elements[el.id] = el;
-  renderElement(el);
-  selectElement(el.id);
-  document.getElementById('emptyHint').style.display = 'none';
-  pushHistory();
-}
-
-function renderElement(el) {
-  const node = OverlayElements.buildNode(el);
-  node.id = 'node_' + el.id;
-  // z is a persistent property on the element's data, assigned once.
-  // Re-rendering (e.g. after an edit) must NEVER bump stacking order —
-  // only explicit actions (new element, duplicate, bring-to-front/send-to-back) change it.
-  if (el.z === undefined || el.z === null) el.z = zTop++;
-  if (el.z >= zTop) zTop = el.z + 1;
-  node.style.zIndex = el.z;
-
-  // Add all 8 resize handles
-  const handleTypes = ['top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left'];
-  const handles = [];
-  handleTypes.forEach(type => {
-    const handle = document.createElement('div');
-    handle.className = 'resize-handle ' + type;
-    handle.dataset.handleType = type;
-    node.appendChild(handle);
-    handles.push(handle);
-  });
-  node.classList.add('dash-el');
-
-  canvas.appendChild(node);
-  
-  // Render Lucide icon after node is added to DOM
-  if (el.type === 'icon' && window.lucide) {
-    window.lucide.createIcons();
-  }
-
-  makeDraggable(node, handles, el);
-  node.addEventListener('mousedown', (e) => { if (!e.target.classList.contains('resize-handle')) selectElement(el.id); });
-  node.addEventListener('contextmenu', (e)=>{
-    e.preventDefault(); e.stopPropagation();
-    showContextMenu(e.clientX, e.clientY, el.id);
-  });
-}
-
-function redrawElement(el) {
-  const old = document.getElementById('node_' + el.id);
-  if (old) old.remove();
-  renderElement(el);
-  if (selectedId === el.id) {
-    document.getElementById('node_' + el.id).classList.add('selected');
-  }
-}
-
-function makeDraggable(node, handles, el) {
-  let dragging=false, resizing=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0, resizeHandleType=null;
-  node.addEventListener('mousedown', (e)=>{
-    if (e.button !== 0) return; // ignore right-click, handled by contextmenu
-    const isResizeHandle = e.target.classList.contains('resize-handle');
-    if (isResizeHandle) {
-      resizing = true;
-      resizeHandleType = e.target.dataset.handleType;
-      sx=e.clientX; sy=e.clientY;
-      ox=el.left; oy=el.top; ow=el.width; oh=el.height;
-      e.stopPropagation(); e.preventDefault();
-      return;
-    }
-    dragging = true;
-    sx=e.clientX; sy=e.clientY;
-    ox=el.left; oy=el.top;
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', (e)=>{
-    if (dragging) {
-      const rawLeft = ox + (e.clientX - sx);
-      const rawTop = oy + (e.clientY - sy);
-      const snap = computeSnap(el.id, rawLeft, rawTop, el.width, el.height);
-      el.left = snap.left; el.top = snap.top;
-      node.style.left = el.left + 'px';
-      node.style.top = el.top + 'px';
-      showGuides(snap);
-    } else if (resizing) {
-      let newLeft = ox, newTop = oy, newWidth = ow, newHeight = oh;
-      const dx = e.clientX - sx;
-      const dy = e.clientY - sy;
-
-      // Calculate resizing based on handle type, keeping opposite side/corner in place
-      if (resizeHandleType.includes('left')) {
-        const proposedWidth = ow - dx;
-        if (proposedWidth >= 24) {
-          newLeft = ox + dx;
-          newWidth = proposedWidth;
-        }
-      } else if (resizeHandleType.includes('right')) {
-        newWidth = Math.max(24, ow + dx);
-      }
-
-      if (resizeHandleType.includes('top')) {
-        const proposedHeight = oh - dy;
-        if (proposedHeight >= 20) {
-          newTop = oy + dy;
-          newHeight = proposedHeight;
-        }
-      } else if (resizeHandleType.includes('bottom')) {
-        newHeight = Math.max(20, oh + dy);
-      }
-
-      const snap = computeSnap(el.id, newLeft, newTop, newWidth, newHeight);
-      el.left = snap.left;
-      el.top = snap.top;
-      el.width = newWidth; // keep the resized width/height
-      el.height = newHeight;
-      node.style.left = el.left + 'px';
-      node.style.top = el.top + 'px';
-      node.style.width = el.width + 'px';
-      node.style.height = el.height + 'px';
-      showGuides(snap);
-    }
-  });
-  document.addEventListener('mouseup', ()=>{
-    if (dragging && (el.left !== ox || el.top !== oy)) pushHistory();
-    if (resizing && (el.left !== ox || el.top !== oy || el.width !== ow || el.height !== oh)) pushHistory();
-    dragging = false; resizing = false; resizeHandleType = null;
-    hideGuides();
-  });
-}
-
-// ---------------- Alignment guides ----------------
-const SNAP_THRESHOLD = 5;
-function computeSnap(elId, currentLeft, currentTop, currentWidth, currentHeight){
-  const l = currentLeft;
-  const t = currentTop;
-  const width = currentWidth;
-  const height = currentHeight;
-
-  const right = l + width, bottom = t + height;
-  const centerX = l + width/2, centerY = t + height/2;
-  let bestV = null, bestH = null;
-
-  Object.values(elements).forEach(other=>{
-    if (other.id === elId) return;
-    const oLeft = other.left, oRight = other.left+other.width, oCenterX = other.left+other.width/2;
-    const oTop = other.top, oBottom = other.top+other.height, oCenterY = other.top+other.height/2;
-
-    [[l,oLeft],[l,oRight],[l,oCenterX],[right,oLeft],[right,oRight],[right,oCenterX],[centerX,oLeft],[centerX,oRight],[centerX,oCenterX]]
-      .forEach(([mine,theirs])=>{
-        const diff = Math.abs(mine-theirs);
-        if (diff <= SNAP_THRESHOLD && (!bestV || diff < bestV.diff)) bestV = { diff, guideX: theirs, delta: theirs-mine };
-      });
-    [[t,oTop],[t,oBottom],[t,oCenterY],[bottom,oTop],[bottom,oBottom],[bottom,oCenterY],[centerY,oTop],[centerY,oBottom],[centerY,oCenterY]]
-      .forEach(([mine,theirs])=>{
-        const diff = Math.abs(mine-theirs);
-        if (diff <= SNAP_THRESHOLD && (!bestH || diff < bestH.diff)) bestH = { diff, guideY: theirs, delta: theirs-mine };
-      });
-  });
-
-  return {
-    left: l + (bestV ? bestV.delta : 0),
-    top: t + (bestH ? bestH.delta : 0),
-    guideX: bestV ? bestV.guideX : null,
-    guideY: bestH ? bestH.guideY : null
+  const TYPE_LABELS = {
+    button: 'Button', icon: 'Icon', image: 'Image', text: 'Text', shape: 'Shape', graph: 'Graph',
+    group: 'Group', repeating: 'Repeating group', popup: 'Popup', floating: 'Floating group',
+    input: 'Input', multiline: 'Multiline input', dropdown: 'Dropdown', checkbox: 'Checkbox',
+    slider: 'Slider input', date: 'Date picker', upload: 'File uploader'
   };
-}
-function showGuides(snap){
-  const gv = document.getElementById('guideV'), gh = document.getElementById('guideH');
-  if (snap.guideX !== null) { gv.style.left = snap.guideX + 'px'; gv.style.display = 'block'; } else { gv.style.display = 'none'; }
-  if (snap.guideY !== null) { gh.style.top = snap.guideY + 'px'; gh.style.display = 'block'; } else { gh.style.display = 'none'; }
-}
-function hideGuides(){
-  document.getElementById('guideV').style.display = 'none';
-  document.getElementById('guideH').style.display = 'none';
-}
 
-// ---------------- Selection + property panel ----------------
-function selectElement(id) {
-  document.querySelectorAll('.dash-el').forEach(n => n.classList.remove('selected'));
-  selectedId = id;
-  const node = document.getElementById('node_' + id);
-  if (node) node.classList.add('selected');
-  renderLayersList();
-  openPropPanel(id);
-}
+  const CHART_TYPES = [
+    { id: 'line', label: 'Line Chart', icon: 'line-chart' },
+    { id: 'area', label: 'Area Chart', icon: 'area-chart' },
+    { id: 'column', label: 'Column Chart', icon: 'bar-chart-3' },
+    { id: 'bar', label: 'Bar Chart', icon: 'bar-chart-2' },
+    { id: 'pie', label: 'Pie Chart', icon: 'pie-chart' },
+    { id: 'donut', label: 'Donut Chart', icon: 'circle' },
+    { id: 'histogram', label: 'Histogram', icon: 'bar-chart-3' },
+    { id: 'box', label: 'Box Plot', icon: 'square' },
+    { id: 'scatter', label: 'Scatter Plot', icon: 'circle-dashed' },
+    { id: 'bubble', label: 'Bubble Chart', icon: 'circle' },
+    { id: 'gantt', label: 'Gantt Chart', icon: 'calendar' },
+    { id: 'heat', label: 'Heat Map', icon: 'square' },
+    { id: 'waterfall', label: 'Waterfall Chart', icon: 'bar-chart-2' }
+  ];
 
-function positionPanel(node) {
-  if (!panelEl) return;
-  const wrap = document.getElementById('canvasWrap');
-  let left = node.offsetLeft + node.offsetWidth + 20 - wrap.scrollLeft;
-  let top = node.offsetTop - wrap.scrollTop;
-  if (left > wrap.clientWidth - 290) left = node.offsetLeft - 290 - wrap.scrollLeft;
-  panelEl.style.left = Math.max(6,left) + 'px';
-  panelEl.style.top = Math.max(6,top) + 'px';
-}
+  const DEFAULTS = {
+    button:   { w:120, h:40,  label:'Refresh view' },
+    icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24, borderStyle: 'none', shadowStyle: 'none' } },
+    image:    { w:160, h:110, label:'Image' },
+    text:     { w:180, h:28,  label:'Section title' },
+    shape:    { w:90,  h:90,  label:'', meta: { shapeType: 'square' } },
+    graph:    { w:280, h:170, label:'', binding:'Sheet1!B2:E10', meta:{ chartType:'line' } },
+    group:    { w:320, h:220, label:'Group' },
+    repeating: { w:320, h:160, label:'Repeating group', binding:'Sheet1!A2:D20' },
+    popup:    { w:280, h:180, label:'Popup' },
+    floating: { w:260, h:170, label:'Floating group' },
+    input:    { w:200, h:38,  label:'Enter value' },
+    multiline: { w:220, h:80, label:'Enter notes' },
+    dropdown: { w:200, h:38,  label:'Select region', meta:{ options:['North','South','East','West'] } },
+    checkbox: { w:22,  h:22,  label:'' },
+    slider:   { w:180, h:34,  label:'', meta:{ min:0, max:100, value:55 } },
+    date:     { w:180, h:38,  label:'Select date' },
+    upload:   { w:200, h:80,  label:'Drop file or browse' }
+  };
 
-function openPropPanel(id) {
-  if (panelEl) panelEl.remove();
-  const el = elements[id];
-  const panel = document.createElement('div');
-  panel.className = 'prop-panel';
-  panel.innerHTML = `
-    <div class="prop-header" id="propDrag">
-      <span class="prop-title">${el.name || OverlayElements.TYPE_LABELS[el.type]}</span>
-      <button class="prop-close" onclick="closePanel()">✕</button>
-    </div>
-    <div class="prop-tabs">
-      <div class="prop-tab active" data-tab="appearance">Appearance</div>
-      <div class="prop-tab" data-tab="data">Data</div>
-      <div class="prop-tab" data-tab="layout">Layout</div>
-    </div>
-    <div class="prop-body" id="propBody"></div>
-  `;
-  canvas.appendChild(panel);
-  panelEl = panel;
+  // Curated list of valid Lucide icons for dashboards
+  const ICONS = [
+    'zap', 'home', 'user', 'users', 'settings', 'search', 'bell', 'mail', 'calendar', 'clock',
+    'folder', 'file', 'file-text', 'image', 'download', 'upload', 'star', 'heart', 'check', 'x',
+    'plus', 'minus', 'trash-2', 'edit', 'save', 'share', 'link', 'external-link', 'copy', 'clipboard',
+    'filter', 'arrow-up', 'arrow-down', 'arrow-left', 'arrow-right', 'chevron-up', 'chevron-down',
+    'chevron-left', 'chevron-right', 'menu', 'grid', 'list', 'bar-chart-3', 'bar-chart-2', 'pie-chart',
+    'line-chart', 'area-chart', 'target', 'trending-up', 'trending-down', 'activity', 'database',
+    'server', 'cloud', 'cloud-upload', 'cloud-download', 'hard-drive', 'cpu', 'monitor', 'laptop',
+    'smartphone', 'tablet', 'printer', 'wifi', 'bluetooth', 'battery', 'lock', 'unlock', 'key', 'shield',
+    'shield-check', 'alert-triangle', 'info', 'help-circle', 'alert-circle', 'check-circle', 'x-circle',
+    'minus-circle', 'plus-circle', 'circle', 'square', 'triangle', 'hexagon', 'sun', 'moon',
+    'cloud-rain', 'cloud-lightning', 'cloud-snow', 'wind', 'droplets', 'thermometer', 'globe', 'map-pin',
+    'map', 'navigation', 'compass', 'phone', 'phone-call', 'voicemail', 'message-square', 'message-circle',
+    'inbox', 'send', 'mail-check', 'at-sign', 'book', 'book-open', 'bookmark', 'bookmark-check', 'library',
+    'graduation-cap', 'award', 'trophy', 'medal', 'gift', 'package', 'shopping-cart', 'shopping-bag',
+    'credit-card', 'wallet', 'dollar-sign', 'euro', 'pound-sterling', 'bitcoin',
+    'receipt', 'file-plus', 'file-minus', 'file-x', 'file-check', 'folder-plus',
+    'folder-minus', 'folder-x', 'folder-check', 'folder-open', 'layers', 'layout', 'columns', 'grid-3x3',
+    'grid-2x2', 'layout-grid', 'layout-list', 'layout-dashboard', 'sliders-horizontal', 'sliders', 'gauge',
+    'percent', 'divide',
+    'infinity', 'pi', 'calculator', 'scissors', 'clipboard-check', 'clipboard-list',
+    'clipboard-x', 'pencil', 'pen', 'pen-tool', 'pen-line', 'pen-square', 'highlighter',
+    'eraser', 'type', 'bold', 'italic', 'underline', 'strikethrough', 'align-left', 'align-center',
+    'align-right', 'align-justify', 'list-ordered', 'indent', 'outdent', 'link-2', 'image-plus',
+    'image-minus', 'camera', 'video', 'mic', 'mic-off', 'play', 'pause',
+    'skip-forward', 'skip-back', 'rewind', 'fast-forward', 'volume-2', 'volume-x', 'volume-1',
+    'maximize', 'minimize', 'fullscreen', 'expand', 'shrink', 'corner-down-left',
+    'corner-down-right', 'corner-left-down', 'corner-left-up', 'corner-right-down', 'corner-right-up',
+    'corner-up-left', 'corner-up-right', 'move', 'move-up', 'move-down', 'move-left', 'move-right',
+    'rotate-cw', 'rotate-ccw', 'flip-vertical', 'flip-horizontal', 'refresh-cw', 'refresh-ccw',
+    'repeat', 'repeat-1', 'shuffle', 'arrow-up-circle', 'arrow-down-circle', 'arrow-left-circle',
+    'arrow-right-circle', 'arrow-up-right', 'arrow-down-right', 'arrow-down-left', 'arrow-up-left',
+    'chevron-up-circle', 'chevron-down-circle', 'chevron-left-circle', 'chevron-right-circle',
+    'chevrons-up', 'chevrons-down', 'chevrons-left', 'chevrons-right', 'folder-down', 'folder-up',
+    'file-down', 'file-up', 'cloud-sync', 'cloud-off', 'sunrise', 'sunset', 'moon-star',
+    'sparkles', 'flame', 'droplet', 'snowflake', 'umbrella', 'eye', 'eye-off', 'watch',
+    'clock-1', 'clock-2', 'clock-3', 'clock-4', 'clock-5', 'clock-6', 'clock-7', 'clock-8',
+    'clock-9', 'clock-10', 'clock-11', 'clock-12', 'calendar-check', 'calendar-x', 'calendar-minus',
+    'calendar-plus', 'calendar-range', 'calendar-clock', 'calendar-days', 'user-plus', 'user-minus',
+    'user-x', 'user-check', 'user-pen', 'user-square', 'user-circle',
+    'user-search', 'user-cog', 'user-star', 'user-lock',
+    'crown', 'building', 'building-2', 'hotel', 'hospital', 'school',
+    'university', 'factory', 'construction', 'hard-hat', 'wrench',
+    'hammer', 'drill', 'axe', 'wifi-off', 'bluetooth-off', 'battery-charging', 'battery-full', 'battery-low',
+    'plug', 'plug-zap', 'power', 'power-off', 'lightbulb',
+    'lightbulb-off', 'lamp', 'lamp-desk', 'lamp-floor', 'lamp-ceiling',
+    'monitor-off', 'gamepad-2', 'joystick', 'lock-open',
+    'shield-off', 'shield-alert'
+  ];
 
-  if (panelPos) {
-    panel.style.left = panelPos.left + 'px';
-    panel.style.top = panelPos.top + 'px';
-  } else {
-    positionPanel(document.getElementById('node_' + id));
-    panelPos = { left: panel.offsetLeft, top: panel.offsetTop };
+  function chartSVG(title, chartType = 'line') {
+    let chartContent = '';
+    switch (chartType) {
+      case 'area':
+        chartContent = `
+          <polygon points="10,100 50,60 90,80 130,30 170,70 210,50 250,90 250,100" fill="#1E7F5C" opacity="0.5"/>
+          <polyline points="10,100 50,60 90,80 130,30 170,70 210,50 250,90" fill="none" stroke="#1E7F5C" stroke-width="2"/>
+        `;
+        break;
+      case 'pie':
+        chartContent = `
+          <circle cx="130" cy="55" r="40" fill="#1E7F5C" opacity="0.8"/>
+          <path d="M130,55 L130,15 A40,40 0 0,1 170,95 Z" fill="#E8A33D"/>
+          <path d="M130,55 L170,95 A40,40 0 0,1 90,95 Z" fill="#3B82F6"/>
+        `;
+        break;
+      case 'donut':
+        chartContent = `
+          <circle cx="130" cy="55" r="40" fill="#1E7F5C" opacity="0.8"/>
+          <circle cx="130" cy="55" r="20" fill="#fff"/>
+          <path d="M130,55 L130,15 A40,40 0 0,1 170,95 Z" fill="#E8A33D"/>
+          <path d="M130,55 L170,95 A40,40 0 0,1 90,95 Z" fill="#3B82F6"/>
+        `;
+        break;
+      case 'column':
+        chartContent = `
+          <rect x="20" y="50" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="65" y="30" width="30" height="70" rx="3" fill="#1E7F5C" opacity="0.75"/>
+          <rect x="110" y="60" width="30" height="40" rx="3" fill="#1E7F5C"/>
+          <rect x="155" y="20" width="30" height="80" rx="3" fill="#1E7F5C" opacity="0.6"/>
+          <rect x="200" y="45" width="30" height="55" rx="3" fill="#1E7F5C" opacity="0.8"/>
+        `;
+        break;
+      case 'bar':
+        chartContent = `
+          <rect x="30" y="20" width="70" height="20" rx="3" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="50" y="45" width="50" height="20" rx="3" fill="#1E7F5C" opacity="0.75"/>
+          <rect x="20" y="70" width="90" height="20" rx="3" fill="#1E7F5C"/>
+          <rect x="60" y="95" width="60" height="20" rx="3" fill="#1E7F5C" opacity="0.6"/>
+          <rect x="40" y="120" width="80" height="20" rx="3" fill="#1E7F5C" opacity="0.8"/>
+        `;
+        break;
+      case 'histogram':
+        chartContent = `
+          <rect x="15" y="30" width="20" height="60" rx="2" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="40" y="50" width="20" height="40" rx="2" fill="#1E7F5C" opacity="0.75"/>
+          <rect x="65" y="20" width="20" height="70" rx="2" fill="#1E7F5C"/>
+          <rect x="90" y="60" width="20" height="30" rx="2" fill="#1E7F5C" opacity="0.6"/>
+          <rect x="115" y="40" width="20" height="50" rx="2" fill="#1E7F5C" opacity="0.8"/>
+          <rect x="140" y="10" width="20" height="80" rx="2" fill="#1E7F5C" opacity="0.95"/>
+          <rect x="165" y="35" width="20" height="55" rx="2" fill="#1E7F5C" opacity="0.7"/>
+          <rect x="190" y="55" width="20" height="35" rx="2" fill="#1E7F5C" opacity="0.65"/>
+          <rect x="215" y="45" width="20" height="45" rx="2" fill="#1E7F5C" opacity="0.85"/>
+        `;
+        break;
+      case 'scatter':
+        chartContent = `
+          <circle cx="40" cy="70" r="4" fill="#1E7F5C"/>
+          <circle cx="70" cy="50" r="4" fill="#E8A33D"/>
+          <circle cx="100" cy="80" r="4" fill="#3B82F6"/>
+          <circle cx="130" cy="40" r="4" fill="#1E7F5C"/>
+          <circle cx="160" cy="60" r="4" fill="#E8A33D"/>
+          <circle cx="190" cy="30" r="4" fill="#3B82F6"/>
+          <circle cx="220" cy="70" r="4" fill="#1E7F5C"/>
+        `;
+        break;
+      case 'bubble':
+        chartContent = `
+          <circle cx="50" cy="70" r="6" fill="#1E7F5C" opacity="0.8"/>
+          <circle cx="90" cy="50" r="8" fill="#E8A33D" opacity="0.7"/>
+          <circle cx="130" cy="80" r="5" fill="#3B82F6" opacity="0.9"/>
+          <circle cx="170" cy="40" r="9" fill="#1E7F5C" opacity="0.6"/>
+          <circle cx="210" cy="60" r="7" fill="#E8A33D" opacity="0.8"/>
+        `;
+        break;
+      case 'heat':
+        chartContent = `
+          <rect x="20" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.3"/>
+          <rect x="70" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.5"/>
+          <rect x="120" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.7"/>
+          <rect x="170" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.9"/>
+          <rect x="220" y="20" width="40" height="30" rx="2" fill="#1E7F5C" opacity="0.4"/>
+          <rect x="20" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.4"/>
+          <rect x="70" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.6"/>
+          <rect x="120" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.8"/>
+          <rect x="170" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.5"/>
+          <rect x="220" y="60" width="40" height="30" rx="2" fill="#E8A33D" opacity="0.7"/>
+        `;
+        break;
+      case 'gantt':
+        chartContent = `
+          <rect x="30" y="25" width="80" height="15" rx="3" fill="#1E7F5C" opacity="0.8"/>
+          <rect x="70" y="45" width="100" height="15" rx="3" fill="#E8A33D" opacity="0.7"/>
+          <rect x="140" y="65" width="90" height="15" rx="3" fill="#3B82F6" opacity="0.8"/>
+          <rect x="50" y="85" width="120" height="15" rx="3" fill="#1E7F5C" opacity="0.6"/>
+        `;
+        break;
+      case 'waterfall':
+        chartContent = `
+          <rect x="30" y="50" width="30" height="40" rx="3" fill="#1E7F5C"/>
+          <rect x="75" y="30" width="30" height="60" rx="3" fill="#1E7F5C" opacity="0.8"/>
+          <rect x="120" y="70" width="30" height="20" rx="3" fill="#D2534A"/>
+          <rect x="165" y="40" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.7"/>
+          <rect x="210" y="55" width="30" height="35" rx="3" fill="#1E7F5C"/>
+        `;
+        break;
+      case 'box':
+        chartContent = `
+          <rect x="60" y="40" width="80" height="40" rx="3" fill="#1E7F5C" opacity="0.5" stroke="#1E7F5C" stroke-width="2"/>
+          <line x1="100" y1="20" x2="100" y2="40" stroke="#1E7F5C" stroke-width="2"/>
+          <line x1="100" y1="80" x2="100" y2="100" stroke="#1E7F5C" stroke-width="2"/>
+          <line x1="70" y1="55" x2="130" y2="55" stroke="#1E7F5C" stroke-width="2"/>
+        `;
+        break;
+      case 'line':
+      default:
+        chartContent = `
+          <polyline points="20,90 60,50 100,70 140,30 180,60 220,40 260,80" fill="none" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="20" cy="90" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="60" cy="50" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="100" cy="70" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="140" cy="30" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="180" cy="60" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="220" cy="40" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+          <circle cx="260" cy="80" r="4" fill="#fff" stroke="#1E7F5C" stroke-width="2"/>
+        `;
+        break;
+    }
+    const chartLabel = CHART_TYPES.find(c => c.id === chartType)?.label || 'Chart';
+    return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:8px;">${title || chartLabel}</div>
+    <svg width="100%" height="100%" viewBox="0 0 260 110" preserveAspectRatio="none">
+      ${chartContent}
+    </svg>`;
   }
 
-  renderTab('appearance', id);
-
-  panel.querySelectorAll('.prop-tab').forEach(t=>{
-    t.addEventListener('click', ()=>{
-      panel.querySelectorAll('.prop-tab').forEach(x=>x.classList.remove('active'));
-      t.classList.add('active');
-      renderTab(t.dataset.tab, id);
-    });
-  });
-
-  const dh = document.getElementById('propDrag');
-  let dragging=false, sx=0, sy=0, ox=0, oy=0;
-  function isInteractiveTarget(target){
-    const interactiveTags = ['INPUT','SELECT','TEXTAREA','BUTTON','CANVAS'];
-    let node = target;
-    while (node && node !== panel) {
-      if (interactiveTags.includes(node.tagName)) return true;
-      if (node.classList && (node.classList.contains('swatch') || node.classList.contains('style-toggle') ||
-          node.classList.contains('color-swatch-btn') || node.classList.contains('prop-tab') || node.classList.contains('prop-close'))) return true;
-      node = node.parentElement;
-    }
-    return false;
+  function baseStyle(el) {
+    const s = {
+      position: 'absolute',
+      left: el.left + 'px',
+      top: el.top + 'px',
+      width: el.width + 'px',
+      height: el.height + 'px',
+      borderRadius: '8px',
+      boxSizing: 'border-box',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Inter, sans-serif',
+      overflow: 'hidden'
+    };
+    return s;
   }
-  panel.addEventListener('mousedown', (e)=>{
-    if (isInteractiveTarget(e.target)) return;
-    dragging=true; sx=e.clientX; sy=e.clientY; ox=panel.offsetLeft; oy=panel.offsetTop;
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', (e)=>{
-    if(dragging){
-      panel.style.left=(ox+(e.clientX-sx))+'px';
-      panel.style.top=(oy+(e.clientY-sy))+'px';
-      panelPos = { left: panel.offsetLeft, top: panel.offsetTop };
-    }
-  });
-  document.addEventListener('mouseup', ()=>dragging=false);
-}
-function closePanel(){ if(panelEl) panelEl.remove(); panelEl=null; document.querySelectorAll('.dash-el').forEach(n=>n.classList.remove('selected')); selectedId=null; }
 
-function renderTab(tab, id) {
-  const el = elements[id];
-  const body = document.getElementById('propBody');
-  if (tab === 'appearance' && el.type === 'text') {
-    const m = el.meta || {};
-    const fonts = ['Inter','Space Grotesk','JetBrains Mono','Roboto','Open Sans','Lato','Montserrat','Poppins','Nunito',
-      'Raleway','Playfair Display','Merriweather','Oswald','Source Sans Pro','PT Sans','Ubuntu','Mukta','Rubik',
-      'Work Sans','Karla','Quicksand','Fira Sans','Barlow','DM Sans','Manrope','Inconsolata','IBM Plex Sans',
-      'IBM Plex Mono','IBM Plex Serif','Crimson Text','Libre Baskerville','Cormorant Garamond','Josefin Sans',
-      'Bitter','Archivo','Heebo','Titillium Web','Noto Sans','Noto Serif','Zilla Slab','Vollkorn',
-      'Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma','Trebuchet MS'];
-    body.innerHTML = `
-      <div class="field"><div class="field-label">Text</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()"></div>
-      <div class="field">
-        <div class="field-label">Font <span style="font-weight:400;color:var(--text-faint);">${fonts.length} free fonts</span></div>
-        <select class="field-input" onchange="setMeta('${id}','fontFamily',this.value)">
-          ${fonts.map(f=>`<option value="${f}" ${((m.fontFamily||'Inter')===f)?'selected':''}>${f}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <div class="field-label">Size</div>
-          <input class="field-input mono" type="number" value="${m.fontSize||14}" oninput="setMeta('${id}','fontSize',parseFloat(this.value)||14)" onblur="pushHistory()">
-        </div>
-        <div class="field">
-          <div class="field-label">Align</div>
-          <div style="display:flex;gap:4px;">
-            <button class="style-toggle ${(m.align||'left')==='left'?'active':''}" onclick="setMeta('${id}','align','left')" title="Left">L</button>
-            <button class="style-toggle ${m.align==='center'?'active':''}" onclick="setMeta('${id}','align','center')" title="Center">C</button>
-            <button class="style-toggle ${m.align==='right'?'active':''}" onclick="setMeta('${id}','align','right')" title="Right">R</button>
-          </div>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Style</div>
-        <div style="display:flex;gap:4px;">
-          <button class="style-toggle ${m.bold?'active':''}" style="font-weight:700;" onclick="toggleMeta('${id}','bold')" title="Bold">B</button>
-          <button class="style-toggle ${m.italic?'active':''}" style="font-style:italic;" onclick="toggleMeta('${id}','italic')" title="Italic">I</button>
-          <button class="style-toggle ${m.underline?'active':''}" style="text-decoration:underline;" onclick="toggleMeta('${id}','underline')" title="Underline">U</button>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Text color</div>
-        <button class="color-swatch-btn" id="textColorSwatchBtn" type="button">
-          <span class="chip" id="textColorChip" style="background:${el.fill||'#1C232B'}"></span>
-          <span class="hex-label" id="textColorHex">${el.fill||'#1C232B'}</span>
-        </button>
-      </div>
-      <div class="field">
-        <div class="field-label">Background color</div>
-        <div style="display:flex;gap:6px;">
-          <button class="color-swatch-btn" id="bgColorSwatchBtn" type="button" style="flex:1;">
-            <span class="chip" id="bgColorChip" style="background:${m.bg||'#fff'};${!m.bg?'background-image:repeating-conic-gradient(#D8DCE1 0% 25%, #fff 0% 50%);':''}"></span>
-            <span class="hex-label" id="bgColorHex">${m.bg||'None'}</span>
-          </button>
-          <button class="style-toggle" id="bgNoneBtn" type="button" title="Remove background">✕</button>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Background roundness</div>
-        <input class="field-input mono" type="number" value="${m.radius!=null?m.radius:8}" oninput="setMeta('${id}','radius',parseFloat(this.value)||0)" onblur="pushHistory()">
-      </div>
-      <div class="divider"></div>
-      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
-    `;
-    document.getElementById('textColorSwatchBtn').addEventListener('click', function(){
-      openColorPicker(this, elements[id].fill || '#1C232B',
-        (hex)=>{ liveSetFill(id, hex); document.getElementById('textColorChip').style.background=hex; document.getElementById('textColorHex').textContent=hex; },
-        ()=>{ commitColorChange(id); });
-    });
-    document.getElementById('bgColorSwatchBtn').addEventListener('click', function(){
-      openColorPicker(this, (elements[id].meta && elements[id].meta.bg) || '#FFFFFF',
-        (hex)=>{ liveSetBg(id, hex); document.getElementById('bgColorChip').style.cssText='background:'+hex+';'; document.getElementById('bgColorHex').textContent=hex; },
-        ()=>{ commitColorChange(id); });
-    });
-    document.getElementById('bgNoneBtn').addEventListener('click', ()=>{ setMeta(id,'bg',null); });
-  } else if (tab === 'appearance' && el.type === 'button') {
-    const m = el.meta || {};
-    const fonts = ['Inter','Space Grotesk','JetBrains Mono','Roboto','Open Sans','Lato','Montserrat','Poppins','Nunito',
-      'Raleway','Playfair Display','Merriweather','Oswald','Source Sans Pro','PT Sans','Ubuntu','Mukta','Rubik',
-      'Work Sans','Karla','Quicksand','Fira Sans','Barlow','DM Sans','Manrope','Inconsolata','IBM Plex Sans',
-      'IBM Plex Mono','IBM Plex Serif','Crimson Text','Libre Baskerville','Cormorant Garamond','Josefin Sans',
-      'Bitter','Archivo','Heebo','Titillium Web','Noto Sans','Noto Serif','Zilla Slab','Vollkorn',
-      'Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma','Trebuchet MS'];
-    const fontWeights = [100,200,300,400,500,600,700,800,900];
-    const borderStyles = ['none','solid','dashed','dotted'];
-    const shadowStyles = ['none','0 2px 4px rgba(0,0,0,0.1)','0 4px 8px rgba(0,0,0,0.15)','0 8px 16px rgba(0,0,0,0.2)','0 16px 32px rgba(0,0,0,0.25)'];
-    body.innerHTML = `
-      <div class="field"><div class="field-label">Label</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()"></div>
-      <div class="field">
-        <div class="field-label">Opacity</div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input class="field-input mono" type="number" min="0" max="100" value="${Math.round((m.opacity!=null?m.opacity*100:100))}" oninput="setMeta('${id}','opacity',parseFloat(this.value)/100)" onblur="pushHistory()" style="flex:1;">
-          <span style="color:var(--text-faint);width:28px;text-align:right;">%</span>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <div class="field-label">Font</div>
-          <select class="field-input" onchange="setMeta('${id}','fontFamily',this.value)">
-            ${fonts.map(f=>`<option value="${f}" ${((m.fontFamily||'Inter')===f)?'selected':''}>${f}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <div class="field-label">Weight</div>
-          <select class="field-input" onchange="setMeta('${id}','fontWeight',parseInt(this.value))">
-            ${fontWeights.map(w=>`<option value="${w}" ${((m.fontWeight||600)===w)?'selected':''}>${w}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <div class="field-label">Size</div>
-          <input class="field-input mono" type="number" value="${m.fontSize||13}" oninput="setMeta('${id}','fontSize',parseFloat(this.value)||13)" onblur="pushHistory()">
-        </div>
-        <div class="field">
-          <div class="field-label">Align</div>
-          <div style="display:flex;gap:4px;">
-            <button class="style-toggle ${(m.align||'center')==='left'?'active':''}" onclick="setMeta('${id}','align','left')" title="Left">L</button>
-            <button class="style-toggle ${(m.align||'center')==='center'?'active':''}" onclick="setMeta('${id}','align','center')" title="Center">C</button>
-            <button class="style-toggle ${m.align==='right'?'active':''}" onclick="setMeta('${id}','align','right')" title="Right">R</button>
-          </div>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Style</div>
-        <div style="display:flex;gap:4px;">
-          <button class="style-toggle ${m.bold?'active':''}" style="font-weight:700;" onclick="toggleMeta('${id}','bold')" title="Bold">B</button>
-          <button class="style-toggle ${m.italic?'active':''}" style="font-style:italic;" onclick="toggleMeta('${id}','italic')" title="Italic">I</button>
-          <button class="style-toggle ${m.underline?'active':''}" style="text-decoration:underline;" onclick="toggleMeta('${id}','underline')" title="Underline">U</button>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Text color</div>
-        <button class="color-swatch-btn" id="textColorSwatchBtn" type="button">
-          <span class="chip" id="textColorChip" style="background:${el.fill||'#FFFFFF'}"></span>
-          <span class="hex-label" id="textColorHex">${el.fill||'#FFFFFF'}</span>
-        </button>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <div class="field-label">Word spacing</div>
-          <input class="field-input mono" type="number" value="${m.wordSpacing||0}" oninput="setMeta('${id}','wordSpacing',parseFloat(this.value)||0)" onblur="pushHistory()">
-        </div>
-        <div class="field">
-          <div class="field-label">Line spacing</div>
-          <input class="field-input mono" type="number" step="0.1" value="${m.lineSpacing||1.4}" oninput="setMeta('${id}','lineSpacing',parseFloat(this.value)||1.4)" onblur="pushHistory()">
-        </div>
-        <div class="field">
-          <div class="field-label">Letter spacing</div>
-          <input class="field-input mono" type="number" step="0.5" value="${m.letterSpacing||0}" oninput="setMeta('${id}','letterSpacing',parseFloat(this.value)||0)" onblur="pushHistory()">
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Background color</div>
-        <button class="color-swatch-btn" id="bgColorSwatchBtn" type="button">
-          <span class="chip" id="bgColorChip" style="background:${m.bg||'#1E7F5C'}"></span>
-          <span class="hex-label" id="bgColorHex">${m.bg||'#1E7F5C'}</span>
-        </button>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <div class="field-label">Border style</div>
-          <select class="field-input" onchange="setMeta('${id}','borderStyle',this.value)">
-            ${borderStyles.map(s=>`<option value="${s}" ${((m.borderStyle||'none')===s)?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <div class="field-label">Roundness</div>
-          <input class="field-input mono" type="number" value="${m.radius!=null?m.radius:8}" oninput="setMeta('${id}','radius',parseFloat(this.value)||0)" onblur="pushHistory()">
-        </div>
-      </div>
-      ${m.borderStyle!=='none'?`
-        <div class="field-row">
-          <div class="field">
-            <div class="field-label">Border width</div>
-            <input class="field-input mono" type="number" value="${m.borderWidth||1}" oninput="setMeta('${id}','borderWidth',parseFloat(this.value)||1)" onblur="pushHistory()">
-          </div>
-          <div class="field">
-            <div class="field-label">Border color</div>
-            <button class="color-swatch-btn" id="borderColorSwatchBtn" type="button">
-              <span class="chip" id="borderColorChip" style="background:${m.borderColor||'#000000'}"></span>
-            </button>
-          </div>
-        </div>
-      `:''}
-      <div class="field">
-        <div class="field-label">Element shadow</div>
-        <select class="field-input" onchange="setMeta('${id}','shadowStyle',this.value)">
-          ${shadowStyles.map((s, i)=>`<option value="${s}" ${((m.shadowStyle||'none')===s)?'selected':''}>${s==='none'?'None':['Light','Medium','Heavy','Extra Heavy'][i-1]}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field">
-        <div class="field-label">Text shadow</div>
-        <div style="display:flex;gap:4px;">
-          <button class="style-toggle ${m.showTextShadow?'active':''}" onclick="toggleMeta('${id}','showTextShadow')">✓</button>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
-    `;
-    document.getElementById('textColorSwatchBtn').addEventListener('click', function(){
-      openColorPicker(this, elements[id].fill || '#FFFFFF',
-        (hex)=>{ liveSetFill(id, hex); document.getElementById('textColorChip').style.background=hex; document.getElementById('textColorHex').textContent=hex; },
-        ()=>{ commitColorChange(id); });
-    });
-    document.getElementById('bgColorSwatchBtn').addEventListener('click', function(){
-      openColorPicker(this, (elements[id].meta && elements[id].meta.bg) || '#1E7F5C',
-        (hex)=>{ liveSetBg(id, hex); document.getElementById('bgColorChip').style.background=hex; document.getElementById('bgColorHex').textContent=hex; },
-        ()=>{ commitColorChange(id); });
-    });
-    if (m.borderStyle!=='none') {
-      const borderBtn = document.getElementById('borderColorSwatchBtn');
-      if (borderBtn) {
-        borderBtn.addEventListener('click', function(){
-          openColorPicker(this, (elements[id].meta && elements[id].meta.borderColor) || '#000000',
-            (hex)=>{ setMeta(id, 'borderColor', hex); document.getElementById('borderColorChip').style.background=hex; },
-            ()=>{ pushHistory(); });
+  function applyStyle(node, styleObj) {
+    Object.keys(styleObj).forEach(k => node.style[k] = styleObj[k]);
+  }
+
+  // Builds a DOM node for one element. `editable` toggles cursor/interaction hints only —
+  // actual drag/resize wiring is attached by the caller (taskpane), not here.
+  function buildNode(el) {
+    const node = document.createElement('div');
+    node.dataset.id = el.id;
+    node.dataset.type = el.type;
+    applyStyle(node, baseStyle(el));
+
+    switch (el.type) {
+      case 'button': {
+        const m = el.meta || {};
+        ensureFontLoaded(m.fontFamily);
+        const textColor = el.fill || '#FFFFFF';
+        const bgColor = m.bg || '#1E7F5C';
+        const borderStyle = m.borderStyle || 'none';
+        const borderRadius = m.radius != null ? m.radius : 8;
+        const borderWidth = m.borderWidth || 1;
+        const borderColor = m.borderColor || '#000000';
+        let border = 'none';
+        if (borderStyle !== 'none') {
+          border = `${borderWidth}px ${borderStyle} ${borderColor}`;
+        }
+        applyStyle(node, {
+          background: bgColor,
+          color: textColor,
+          fontWeight: m.bold ? '700' : (m.fontWeight || '600'),
+          fontSize: (m.fontSize || 13) + 'px',
+          fontFamily: "'" + (m.fontFamily || 'Inter') + "', sans-serif",
+          fontStyle: m.italic ? 'italic' : 'normal',
+          textDecoration: m.underline ? 'underline' : 'none',
+          justifyContent: m.align === 'center' ? 'center' : (m.align === 'right' ? 'flex-end' : 'center'),
+          textAlign: m.align || 'center',
+          paddingLeft: '12px',
+          paddingRight: '12px',
+          borderRadius: borderRadius + 'px',
+          border: border,
+          opacity: m.opacity != null ? m.opacity : 1,
+          wordSpacing: (m.wordSpacing || 0) + 'px',
+          lineHeight: (m.lineSpacing || 1.4),
+          letterSpacing: (m.letterSpacing || 0) + 'px',
+          boxShadow: m.shadowStyle === 'none' ? 'none' : (m.shadowStyle || '0 2px 8px rgba(0,0,0,0.15)'),
+          textShadow: m.showTextShadow ? (m.textShadowStyle || '0 1px 2px rgba(0,0,0,0.2)') : 'none'
         });
+        node.textContent = el.label || 'Button';
+        break;
       }
-    }
-  } else if (tab === 'appearance' && el.type === 'icon') {
-    const m = el.meta || {};
-    const borderStyles = ['none','solid','dashed','dotted'];
-    const shadowStyles = ['none','0 2px 4px rgba(0,0,0,0.1)','0 4px 8px rgba(0,0,0,0.15)','0 8px 16px rgba(0,0,0,0.2)','0 16px 32px rgba(0,0,0,0.25)'];
-    body.innerHTML = `
-      <div class="field">
-        <div class="field-label">Icon</div>
-        <button class="icon-preview-btn" id="iconPreviewBtn" type="button" onclick="openIconPicker('${id}')">
-          <i data-lucide="${m.iconName||'zap'}"></i>
-        </button>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <div class="field-label">Icon size</div>
-          <input class="field-input mono" type="number" value="${m.iconSize||24}" oninput="setMeta('${id}','iconSize',parseFloat(this.value)||24)" onblur="pushHistory()">
-        </div>
-        <div class="field">
-          <div class="field-label">Opacity</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input class="field-input mono" type="number" min="0" max="100" value="${Math.round((m.opacity!=null?m.opacity*100:100))}" oninput="setMeta('${id}','opacity',parseFloat(this.value)/100)" onblur="pushHistory()" style="flex:1;">
-            <span style="color:var(--text-faint);width:28px;text-align:right;">%</span>
-          </div>
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Icon color</div>
-        <button class="color-swatch-btn" id="iconColorSwatchBtn" type="button">
-          <span class="chip" id="iconColorChip" style="background:${el.fill||'#12181F'}"></span>
-          <span class="hex-label" id="iconColorHex">${el.fill||'#12181F'}</span>
-        </button>
-      </div>
-      <div class="field">
-        <div class="field-label">Background color</div>
-        <div style="display:flex;gap:6px;">
-          <button class="color-swatch-btn" id="bgColorSwatchBtn" type="button" style="flex:1;">
-            <span class="chip" id="bgColorChip" style="background:${m.bg||'transparent'};${!m.bg?'background-image:repeating-conic-gradient(#D8DCE1 0% 25%, #fff 0% 50%);':''}"></span>
-            <span class="hex-label" id="bgColorHex">${m.bg||'None'}</span>
-          </button>
-          <button class="style-toggle" id="bgNoneBtn" type="button" title="Remove background">✕</button>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <div class="field-label">Border style</div>
-          <select class="field-input" onchange="setMeta('${id}','borderStyle',this.value)">
-            ${borderStyles.map(s=>`<option value="${s}" ${((m.borderStyle||'none')===s)?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <div class="field-label">Roundness</div>
-          <input class="field-input mono" type="number" value="${m.radius!=null?m.radius:8}" oninput="setMeta('${id}','radius',parseFloat(this.value)||0)" onblur="pushHistory()">
-        </div>
-      </div>
-      ${m.borderStyle!=='none'?`
-        <div class="field-row">
-          <div class="field">
-            <div class="field-label">Border width</div>
-            <input class="field-input mono" type="number" value="${m.borderWidth||1.5}" oninput="setMeta('${id}','borderWidth',parseFloat(this.value)||1.5)" onblur="pushHistory()">
-          </div>
-          <div class="field">
-            <div class="field-label">Border color</div>
-            <button class="color-swatch-btn" id="borderColorSwatchBtn" type="button">
-              <span class="chip" id="borderColorChip" style="background:${m.borderColor||'#12181F'}"></span>
-            </button>
-          </div>
-        </div>
-      `:''}
-      <div class="field">
-        <div class="field-label">Element shadow</div>
-        <select class="field-input" onchange="setMeta('${id}','shadowStyle',this.value)">
-          ${shadowStyles.map((s, i)=>`<option value="${s}" ${((m.shadowStyle||'none')===s)?'selected':''}>${s==='none'?'None':['Light','Medium','Heavy','Extra Heavy'][i-1]}</option>`).join('')}
-        </select>
-      </div>
-      <div class="divider"></div>
-      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
-    `;
-    // Initialize Lucide icons in preview
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
-    document.getElementById('iconColorSwatchBtn').addEventListener('click', function(){
-      openColorPicker(this, elements[id].fill || '#12181F',
-        (hex)=>{ liveSetFill(id, hex); document.getElementById('iconColorChip').style.background=hex; document.getElementById('iconColorHex').textContent=hex; },
-        ()=>{ commitColorChange(id); });
-    });
-    document.getElementById('bgColorSwatchBtn').addEventListener('click', function(){
-      openColorPicker(this, (elements[id].meta && elements[id].meta.bg) || '#FFFFFF',
-        (hex)=>{ liveSetBg(id, hex); document.getElementById('bgColorChip').style.cssText='background:'+hex+';'; document.getElementById('bgColorHex').textContent=hex; },
-        ()=>{ commitColorChange(id); });
-    });
-    document.getElementById('bgNoneBtn').addEventListener('click', ()=>{ setMeta(id,'bg',null); });
-    if (m.borderStyle!=='none') {
-      const borderBtn = document.getElementById('borderColorSwatchBtn');
-      if (borderBtn) {
-        borderBtn.addEventListener('click', function(){
-          openColorPicker(this, (elements[id].meta && elements[id].meta.borderColor) || '#12181F',
-            (hex)=>{ setMeta(id, 'borderColor', hex); document.getElementById('borderColorChip').style.background=hex; },
-            ()=>{ pushHistory(); });
+      case 'icon': {
+        const m = el.meta || {};
+        const iconName = m.iconName || 'zap';
+        const iconSize = m.iconSize || 24;
+        const iconColor = el.fill || '#12181F';
+        const bgColor = m.bg || 'transparent';
+        const borderStyle = m.borderStyle || 'none';
+        const borderRadius = m.radius != null ? m.radius : 8;
+        const borderWidth = m.borderWidth || 1.5;
+        const borderColor = m.borderColor || '#12181F';
+        let border = 'none';
+        if (borderStyle !== 'none') {
+          border = `${borderWidth}px ${borderStyle} ${borderColor}`;
+        }
+        applyStyle(node, {
+          background: bgColor,
+          color: iconColor,
+          border: border,
+          borderRadius: borderRadius + 'px',
+          opacity: m.opacity != null ? m.opacity : 1,
+          boxShadow: m.shadowStyle === 'none' ? 'none' : (m.shadowStyle || 'none')
         });
+        node.innerHTML = `<i data-lucide="${iconName}" style="width: ${iconSize}px; height: ${iconSize}px;"></i>`;
+        break;
       }
+      case 'text': {
+        const m = el.meta || {};
+        ensureFontLoaded(m.fontFamily);
+        applyStyle(node, {
+          background: m.bg || 'transparent',
+          color: el.fill || '#1C232B',
+          fontSize: (m.fontSize || 14) + 'px',
+          fontFamily: "'" + (m.fontFamily || 'Inter') + "', sans-serif",
+          fontWeight: m.bold ? '700' : '500',
+          fontStyle: m.italic ? 'italic' : 'normal',
+          textDecoration: m.underline ? 'underline' : 'none',
+          justifyContent: m.align === 'center' ? 'center' : (m.align === 'right' ? 'flex-end' : 'flex-start'),
+          textAlign: m.align || 'left',
+          paddingLeft: '2px',
+          borderRadius: (m.radius != null ? m.radius : 8) + 'px'
+        });
+        node.textContent = el.label || 'Text';
+        break;
+      }
+      case 'shape':
+        const m = el.meta || {};
+        const shapeType = m.shapeType || 'square';
+        const fillColor = el.fill || '#E8A33D';
+
+        // Set up base styles
+        const baseStyles = {
+          background: 'transparent',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden'
+        };
+
+        applyStyle(node, baseStyles);
+
+        // Create SVG for different shape types using fixed viewBox
+        let svgContent = '';
+        const viewBoxSize = 100;
+        const strokeWidth = 3;
+
+        switch (shapeType) {
+          case 'square':
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            break;
+          case 'ellipse':
+            svgContent = `<ellipse cx="${viewBoxSize/2}" cy="${viewBoxSize/2}" rx="${(viewBoxSize - strokeWidth)/2}" ry="${(viewBoxSize - strokeWidth)/2}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            break;
+          case 'line':
+            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
+            break;
+          case 'arrow':
+            const arrowHeadSize = viewBoxSize * 0.2;
+            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - arrowHeadSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>
+<polygon points="${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 - arrowHeadSize/1.5} ${viewBoxSize - strokeWidth},${viewBoxSize/2} ${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 + arrowHeadSize/1.5}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth/2}"/>`;
+            break;
+          default:
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+        }
+
+        node.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="none">${svgContent}</svg>`;
+        break;
+      case 'image':
+        applyStyle(node, {
+          background: 'repeating-linear-gradient(45deg,#EFF1F4,#EFF1F4 8px,#F7F8FA 8px,#F7F8FA 16px)',
+          border: '1.5px dashed #9AA2AC', color: '#9AA2AC', fontSize: '11px'
+        });
+        node.textContent = el.label || 'Image';
+        break;
+      case 'graph':
+        const chartMeta = el.meta || {};
+        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
+        node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line');
+        break;
+      case 'group': case 'repeating': case 'popup': case 'floating':
+        applyStyle(node, { background: 'rgba(30,127,92,0.04)', border: '1.5px dashed rgba(30,127,92,0.4)', color: '#6B7480', fontSize: '11px', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '6px 8px' });
+        node.textContent = el.label || TYPE_LABELS[el.type];
+        break;
+      case 'input':
+        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', justifyContent: 'flex-start', paddingLeft: '12px', color: '#9AA2AC', fontSize: '12.5px' });
+        node.textContent = el.label || 'Input';
+        break;
+      case 'multiline':
+        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', justifyContent: 'flex-start', alignItems: 'flex-start', paddingLeft: '12px', paddingTop: '8px', color: '#9AA2AC', fontSize: '12.5px' });
+        node.textContent = el.label || 'Notes';
+        break;
+      case 'dropdown':
+        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', justifyContent: 'space-between', padding: '0 12px', color: '#9AA2AC', fontSize: '12.5px' });
+        node.innerHTML = `<span>${el.label || 'Select'}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`;
+        break;
+      case 'checkbox':
+        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB' });
+        break;
+      case 'slider': {
+        const meta = el.meta || { min:0, max:100, value:55 };
+        const pct = Math.max(0, Math.min(100, ((meta.value - meta.min) / (meta.max - meta.min)) * 100));
+        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB' });
+        node.innerHTML = `<div style="position:relative;width:88%;height:3px;background:#E4E7EB;border-radius:2px;">
+          <div style="position:absolute;left:0;top:0;height:3px;width:${pct}%;background:#1E7F5C;border-radius:2px;"></div>
+          <div style="position:absolute;left:${pct}%;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #1E7F5C;"></div>
+        </div>`;
+        break;
+      }
+      case 'date':
+        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', justifyContent: 'flex-start', paddingLeft: '12px', color: '#9AA2AC', fontSize: '12.5px' });
+        node.textContent = el.label || 'Select date';
+        break;
+      case 'upload':
+        applyStyle(node, { background: '#fff', border: '1.5px dashed #9AA2AC', color: '#9AA2AC', fontSize: '11px' });
+        node.textContent = el.label || 'Drop file or browse';
+        break;
+      default:
+        applyStyle(node, { background: '#eee', color: '#999', fontSize: '11px' });
+        node.textContent = el.type;
     }
-  } else if (tab === 'appearance' && el.type === 'shape') {
-    const m = el.meta || {};
-    const shapeTypes = [
-      { id: 'square', label: 'Square', svg: `<rect x="5" y="5" width="90" height="90" fill="#12181F" rx="8"/>` },
-      { id: 'ellipse', label: 'Ellipse', svg: `<ellipse cx="50" cy="50" rx="45" ry="45" fill="#12181F"/>` },
-      { id: 'line', label: 'Line', svg: `<line x1="10" y1="50" x2="90" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/>` },
-      { id: 'arrow', label: 'Arrow', svg: `<line x1="10" y1="50" x2="65" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/><polygon points="65,30 90,50 65,70" fill="#12181F"/>` }
-    ];
-    body.innerHTML = `
-      <div class="field">
-        <div class="field-label">Shape Type</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-          ${shapeTypes.map(st => `
-            <button class="shape-type-btn ${(m.shapeType||'square')===st.id?'active':''}" 
-                    onclick="setMeta('${id}','shapeType','${st.id}'); redrawElement(elements['${id}']); renderTab('appearance','${id}');" 
-                    title="${st.label}">
-              <svg width="100%" height="100%" viewBox="0 0 100 100">${st.svg}</svg>
-            </button>
-          `).join('')}
-        </div>
-      </div>
-      <div class="field">
-        <div class="field-label">Fill color</div>
-        <button class="color-swatch-btn" id="shapeColorSwatchBtn" type="button">
-          <span class="chip" id="shapeColorChip" style="background:${el.fill||'#E8A33D'}"></span>
-          <span class="hex-label" id="shapeColorHex">${el.fill||'#E8A33D'}</span>
-        </button>
-      </div>
-      <div class="divider"></div>
-      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
-    `;
-    // Add color picker event listener
-    document.getElementById('shapeColorSwatchBtn').addEventListener('click', function(){
-      openColorPicker(this, elements[id].fill || '#E8A33D',
-        (hex)=>{ 
-          liveSetFill(id, hex); 
-          document.getElementById('shapeColorChip').style.background = hex; 
-          document.getElementById('shapeColorHex').textContent = hex; 
-        },
-        ()=>{ commitColorChange(id); }
-      );
-    });
-  } else if (tab === 'appearance' && el.type === 'graph') {
-    const m = el.meta || {};
-    const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
-    body.innerHTML = `
-      <div class="field">
-        <div class="field-label">Chart Type</div>
-        <select class="field-input" onchange="setMeta('${id}','chartType',this.value)">
-          ${chartTypes.map(ct => `<option value="${ct.id}" ${((m.chartType||'line')===ct.id)?'selected':''}>${ct.label}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field">
-        <div class="field-label">Label</div>
-        <input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()">
-      </div>
-      <div class="divider"></div>
-      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
-    `;
-  } else if (tab === 'appearance') {
-    const showText = ['text','shape','group','repeating','popup','floating','input','multiline','dropdown','date','upload','graph'].includes(el.type);
-    body.innerHTML = `
-      ${showText ? `<div class="field"><div class="field-label">Label / text</div><input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()"></div>` : ''}
-      <div class="field">
-        <div class="field-label">Fill color</div>
-        <div class="swatch-row">
-          <div class="swatch" style="background:#1E7F5C" onclick="setFill('${id}','#1E7F5C',this)"></div>
-          <div class="swatch" style="background:#12181F" onclick="setFill('${id}','#12181F',this)"></div>
-          <div class="swatch" style="background:#E8A33D" onclick="setFill('${id}','#E8A33D',this)"></div>
-          <div class="swatch" style="background:#D2534A" onclick="setFill('${id}','#D2534A',this)"></div>
-          <div class="swatch" style="background:#FFFFFF;border:1px solid var(--line)" onclick="setFill('${id}','#FFFFFF',this)"></div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
-    `;
-  } else if (tab === 'data') {
-    body.innerHTML = `
-      <div class="field">
-        <div class="field-label">Cell range binding <span style="color:var(--text-faint);font-weight:400;">optional</span></div>
-        <input class="field-input mono" value="${el.binding||''}" placeholder="e.g. Sheet1!B2:E10" oninput="updateBinding('${id}', this.value)" onblur="pushHistory()">
-      </div>
-      <div class="hint" style="font-size:10px;color:var(--text-faint);margin-top:6px;line-height:1.5;">Live data pulled from this range isn't wired up yet — this just records which range the element is meant to represent.</div>
-    `;
-  } else if (tab === 'layout') {
-    body.innerHTML = `
-      <div class="field-row">
-        <div class="field"><div class="field-label">X</div><input class="field-input mono" value="${el.left}" oninput="setPos('${id}','left',this.value)" onblur="pushHistory()"></div>
-        <div class="field"><div class="field-label">Y</div><input class="field-input mono" value="${el.top}" oninput="setPos('${id}','top',this.value)" onblur="pushHistory()"></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><div class="field-label">Width</div><input class="field-input mono" value="${el.width}" oninput="setPos('${id}','width',this.value)" onblur="pushHistory()"></div>
-        <div class="field"><div class="field-label">Height</div><input class="field-input mono" value="${el.height}" oninput="setPos('${id}','height',this.value)" onblur="pushHistory()"></div>
-      </div>
-    `;
+    return node;
   }
-}
 
-function updateLabel(id, v){ elements[id].label = v; redrawElement(elements[id]); }
-function updateBinding(id, v){ elements[id].binding = v; }
-function liveSetFill(id, hex){ elements[id].fill = hex; redrawElement(elements[id]); }
-function liveSetBg(id, hex){ if (!elements[id].meta) elements[id].meta = {}; elements[id].meta.bg = hex; redrawElement(elements[id]); }
-function commitColorChange(id){ pushHistory(); if (panelEl) renderTab('appearance', id); }
-function setFill(id, color, node){
-  node.parentElement.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
-  node.classList.add('active');
-  elements[id].fill = color;
-  redrawElement(elements[id]);
-  pushHistory();
-}
-function setMeta(id, key, value){
-  if (!elements[id].meta) elements[id].meta = {};
-  elements[id].meta[key] = value;
-  redrawElement(elements[id]);
-  renderTab('appearance', id);
-  pushHistory();
-}
-function toggleMeta(id, key){
-  if (!elements[id].meta) elements[id].meta = {};
-  elements[id].meta[key] = !elements[id].meta[key];
-  redrawElement(elements[id]);
-  renderTab('appearance', id);
-  pushHistory();
-}
-let currentIconPickerId = null;
-function openIconPicker(id) {
-  currentIconPickerId = id;
-  const el = elements[id];
-  const m = el.meta || {};
-  let iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
-  
-  // Remove known invalid icons
-  const invalidIcons = ['pulse', 'cash', 'equals', 'not-equals', 'greater-than', 'less-than', 'stop', 'sync', 'fire', 'user-unlock', 'screwdriver', 'printer-off', 'shield-heart', 'shield-star'];
-  iconList = iconList.filter(icon => !invalidIcons.includes(icon));
-  
-  const modalOverlay = document.createElement('div');
-  modalOverlay.className = 'icon-picker-modal-overlay';
-  modalOverlay.id = 'iconPickerModal';
-  modalOverlay.innerHTML = `
-    <div class="icon-picker-modal">
-      <div class="icon-picker-modal-header">
-        <h3>Choose an Icon</h3>
-        <button class="icon-picker-modal-close" onclick="closeIconPicker()">✕</button>
-      </div>
-      <input type="text" class="icon-picker-modal-search" id="iconSearch" placeholder="Search icons..." oninput="filterIcons()">
-      <div class="icon-picker-modal-grid" id="iconModalGrid">
-        ${iconList.map(iconName => `
-          <div class="icon-picker-modal-item ${(m.iconName||'zap')===iconName?'active':''}" data-icon="${iconName}" onclick="selectIcon('${iconName}')">
-            <i data-lucide="${iconName}"></i>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modalOverlay);
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) closeIconPicker();
-  });
-  
-  if (window.lucide) {
-    window.lucide.createIcons();
+  function makeElement(type, overrides) {
+    const def = DEFAULTS[type] || { w: 100, h: 40, label: '' };
+    return Object.assign({
+      id: 'el_' + Math.random().toString(36).slice(2, 9),
+      type,
+      left: 40, top: 40,
+      width: def.w, height: def.h,
+      label: def.label || '',
+      fill: null,
+      binding: def.binding || null,
+      meta: def.meta || {}
+    }, overrides || {});
   }
-  
-  document.getElementById('iconSearch').focus();
-}
-function filterIcons() {
-  const searchText = document.getElementById('iconSearch').value.toLowerCase();
-  const items = document.querySelectorAll('.icon-picker-modal-item');
-  let iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
-  // Remove known invalid icons
-  const invalidIcons = ['pulse', 'cash', 'equals', 'not-equals', 'greater-than', 'less-than', 'stop', 'sync', 'fire', 'user-unlock', 'screwdriver', 'printer-off', 'shield-heart', 'shield-star'];
-  iconList = iconList.filter(icon => !invalidIcons.includes(icon));
-  
-  items.forEach((item, index) => {
-    const iconName = iconList[index];
-    if (iconName && iconName.toLowerCase().includes(searchText)) {
-      item.style.display = 'flex';
-    } else {
-      item.style.display = 'none';
-    }
-  });
-}
-function selectIcon(iconName) {
-  if (!currentIconPickerId) return;
-  
-  if (!elements[currentIconPickerId].meta) elements[currentIconPickerId].meta = {};
-  elements[currentIconPickerId].meta.iconName = iconName;
-  redrawElement(elements[currentIconPickerId]);
-  pushHistory();
-  closeIconPicker();
-  if (panelEl) renderTab('appearance', currentIconPickerId);
-}
-function closeIconPicker() {
-  const modal = document.getElementById('iconPickerModal');
-  if (modal) modal.remove();
-  currentIconPickerId = null;
-}
-function setPos(id, prop, v){
-  elements[id][prop] = parseFloat(v) || 0;
-  redrawElement(elements[id]);
-}
-function deleteElement(id){
-  removeContextMenu();
-  const node = document.getElementById('node_' + id);
-  if (node) node.remove();
-  delete elements[id];
-  closePanel();
-  if (Object.keys(elements).length === 0) document.getElementById('emptyHint').style.display='block';
-  pushHistory();
-}
 
-document.getElementById('canvas').addEventListener('mousedown', (e)=>{
-  if (e.target.id === 'canvas') closePanel();
-});
-
-// (Publish/load logic now lives in the routing layer above: saveDashboard() / loadDashboardById())
-</script>
-</body>
-</html>
+  return { TYPE_LABELS, DEFAULTS, buildNode, makeElement, ICONS, CHART_TYPES };
+})();
