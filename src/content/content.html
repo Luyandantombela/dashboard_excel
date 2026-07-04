@@ -1735,6 +1735,42 @@ function renderTab(tab, id) {
         });
       }
     }
+  } else if (tab === 'appearance' && el.type === 'shape') {
+    const m = el.meta || {};
+    const shapeTypes = [
+      { id: 'square', label: 'Square' },
+      { id: 'ellipse', label: 'Ellipse' },
+      { id: 'line', label: 'Line' },
+      { id: 'arrow', label: 'Arrow' }
+    ];
+    body.innerHTML = `
+      <div class="field">
+        <div class="field-label">Shape Type</div>
+        <select class="field-input" onchange="setMeta('${id}','shapeType',this.value); redrawElement(elements['${id}']);">
+          ${shapeTypes.map(st => `<option value="${st.id}" ${((m.shapeType||'square')===st.id)?'selected':''}>${st.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Fill color</div>
+        <button class="color-swatch-btn" id="shapeColorSwatchBtn" type="button">
+          <span class="chip" id="shapeColorChip" style="background:${el.fill||'#E8A33D'}"></span>
+          <span class="hex-label" id="shapeColorHex">${el.fill||'#E8A33D'}</span>
+        </button>
+      </div>
+      <div class="divider"></div>
+      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+    `;
+    // Add color picker event listener
+    document.getElementById('shapeColorSwatchBtn').addEventListener('click', function(){
+      openColorPicker(this, elements[id].fill || '#E8A33D',
+        (hex)=>{ 
+          liveSetFill(id, hex); 
+          document.getElementById('shapeColorChip').style.background = hex; 
+          document.getElementById('shapeColorHex').textContent = hex; 
+        },
+        ()=>{ commitColorChange(id); }
+      );
+    });
   } else if (tab === 'appearance' && el.type === 'graph') {
     const m = el.meta || {};
     const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
