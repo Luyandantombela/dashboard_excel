@@ -1189,6 +1189,11 @@ function renderElement(el) {
   });
   node.classList.add('dash-el');
 
+  // If it's a special shape, add vertex handles and edge add buttons
+  if (el.type === 'shape' && el.meta && el.meta.shapeType === 'special') {
+    setupSpecialShape(node, el);
+  }
+
   canvas.appendChild(node);
   
   // Render Lucide icon after node is added to DOM
@@ -1197,11 +1202,155 @@ function renderElement(el) {
   }
 
   makeDraggable(node, handles, el);
-  node.addEventListener('mousedown', (e) => { if (!e.target.classList.contains('resize-handle')) selectElement(el.id); });
+  node.addEventListener('mousedown', (e) => { 
+    if (!e.target.classList.contains('resize-handle') && 
+        !e.target.classList.contains('vertex-handle') &&
+        !e.target.classList.contains('edge-add-handle')) {
+      selectElement(el.id); 
+    } 
+  });
   node.addEventListener('contextmenu', (e)=>{
     e.preventDefault(); e.stopPropagation();
     showContextMenu(e.clientX, e.clientY, el.id);
   });
+}
+
+// Helper function to convert normalized (0-100) coordinates to pixel coordinates
+function normToPixel(normX, normY, elWidth, elHeight) {
+  return {
+    x: (normX / 100) * elWidth,
+    y: (normY / 100) * elHeight
+  };
+}
+// Helper function to convert pixel coordinates to normalized (0-100)
+function pixelToNorm(pixelX, pixelY, elWidth, elHeight) {
+  return {
+    x: Math.max(0, Math.min(100, (pixelX / elWidth) * 100)),
+    y: Math.max(0, Math.min(100, (pixelY / elHeight) * 100))
+  };
+}
+// Set up the special shape with interactive vertices and edges
+function setupSpecialShape(node, el) {
+  const m = el.meta;
+  if (!m.vertices) {
+    m.vertices = [
+      { x: 50, y: 15 },
+      { x: 85, y: 85 },
+      { x: 15, y: 85 }
+    ];
+  }
+
+  // Function to update the SVG polygon and interactive handles
+  function updateSpecialShape() {
+    // Update the SVG polygon
+    const svg = node.querySelector('svg');
+    const polygon = svg ? svg.querySelector('polygon') : null;
+    if (polygon) {
+      const points = m.vertices.map(v => `${v.x},${v.y}`).join(' ');
+      polygon.setAttribute('points', points);
+    }
+    // Update all handles
+    updateHandles();
+  }
+
+  // Function to update vertex and edge handles
+  function updateHandles() {
+    // Remove existing handles
+    const existingVertices = node.querySelectorAll('.vertex-handle');
+    existingVertices.forEach(v => v.remove());
+    const existingEdges = node.querySelectorAll('.edge-add-handle');
+    existingEdges.forEach(e => e.remove());
+
+    // Add vertex handles
+    m.vertices.forEach((vertex, index) => {
+      const pixelPos = normToPixel(vertex.x, vertex.y, el.width, el.height);
+      const vHandle = document.createElement('div');
+      vHandle.className = 'vertex-handle';
+      vHandle.style.left = (pixelPos.x - 8) + 'px'; // 16px handle, so offset by -8
+      vHandle.style.top = (pixelPos.y - 8) + 'px';
+      vHandle.style.width = '16px';
+      vHandle.style.height = '16px';
+      vHandle.style.borderRadius = '50%';
+      vHandle.style.background = 'var(--emerald)';
+      vHandle.style.border = '2px solid white';
+      vHandle.style.position = 'absolute';
+      vHandle.style.zIndex = 20;
+      vHandle.style.cursor = 'move';
+      vHandle.dataset.vertexIndex = index;
+
+      // Dragging logic for vertex
+      let isDraggingVertex = false;
+      vHandle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        selectElement(el.id);
+        isDraggingVertex = true;
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (isDraggingVertex) {
+          const rect = node.getBoundingClientRect();
+          const dx = e.clientX - rect.left;
+          const dy = e.clientY - rect.top;
+          const newNorm = pixelToNorm(dx, dy, el.width, el.height);
+          m.vertices[index] = newNorm;
+          updateSpecialShape();
+        }
+      });
+      document.addEventListener('mouseup', () => {
+        if (isDraggingVertex) {
+          pushHistory();
+        }
+        isDraggingVertex = false;
+      });
+
+      node.appendChild(vHandle);
+    });
+
+    // Add edge add handles (plus buttons on each edge)
+    for (let i = 0; i < m.vertices.length; i++) {
+      const v1 = m.vertices[i];
+      const v2 = m.vertices[(i + 1) % m.vertices.length];
+      const midX = (v1.x + v2.x) / 2;
+      const midY = (v1.y + v2.y) / 2;
+      const pixelPos = normToPixel(midX, midY, el.width, el.height);
+      
+      const edgeHandle = document.createElement('div');
+      edgeHandle.className = 'edge-add-handle';
+      edgeHandle.style.left = (pixelPos.x - 10) + 'px';
+      edgeHandle.style.top = (pixelPos.y - 10) + 'px';
+      edgeHandle.style.width = '20px';
+      edgeHandle.style.height = '20px';
+      edgeHandle.style.borderRadius = '50%';
+      edgeHandle.style.background = 'rgba(255,255,255,0.9)';
+      edgeHandle.style.border = '2px solid var(--emerald)';
+      edgeHandle.style.position = 'absolute';
+      edgeHandle.style.zIndex = 19;
+      edgeHandle.style.cursor = 'pointer';
+      edgeHandle.style.display = 'flex';
+      edgeHandle.style.alignItems = 'center';
+      edgeHandle.style.justifyContent = 'center';
+      edgeHandle.style.fontSize = '14px';
+      edgeHandle.style.color = 'var(--emerald)';
+      edgeHandle.style.fontWeight = 'bold';
+      edgeHandle.textContent = '+';
+      edgeHandle.dataset.edgeIndex = i;
+
+      edgeHandle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectElement(el.id);
+        // Insert new vertex at midpoint
+        const newVertex = { x: midX, y: midY };
+        m.vertices.splice(i + 1, 0, newVertex);
+        updateSpecialShape();
+        pushHistory();
+      });
+
+      node.appendChild(edgeHandle);
+    }
+  }
+
+  // Initialize
+  updateHandles();
 }
 
 function redrawElement(el) {
@@ -1276,11 +1425,183 @@ function makeDraggable(node, handles, el) {
       node.style.width = el.width + 'px';
       node.style.height = el.height + 'px';
       showGuides(snap);
+
+      // If it's a special shape, update handles as we resize
+      if (el.type === 'shape' && el.meta && el.meta.shapeType === 'special') {
+        const existingVertices = node.querySelectorAll('.vertex-handle');
+        const existingEdges = node.querySelectorAll('.edge-add-handle');
+        existingVertices.forEach(v => v.remove());
+        existingEdges.forEach(e => e.remove());
+        
+        // Re-add handles with new width/height
+        if (!el.meta.vertices) {
+          el.meta.vertices = [
+            { x: 50, y: 15 },
+            { x: 85, y: 85 },
+            { x: 15, y: 85 }
+          ];
+        }
+        
+        // Update vertex positions
+        el.meta.vertices.forEach((vertex, index) => {
+          const pixelPos = normToPixel(vertex.x, vertex.y, el.width, el.height);
+          const vHandle = document.createElement('div');
+          vHandle.className = 'vertex-handle';
+          vHandle.style.left = (pixelPos.x - 8) + 'px';
+          vHandle.style.top = (pixelPos.y - 8) + 'px';
+          vHandle.style.width = '16px';
+          vHandle.style.height = '16px';
+          vHandle.style.borderRadius = '50%';
+          vHandle.style.background = 'var(--emerald)';
+          vHandle.style.border = '2px solid white';
+          vHandle.style.position = 'absolute';
+          vHandle.style.zIndex = 20;
+          vHandle.style.cursor = 'move';
+          vHandle.dataset.vertexIndex = index;
+          
+          let isDraggingVertex = false;
+          vHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectElement(el.id);
+            isDraggingVertex = true;
+          });
+          document.addEventListener('mousemove', (e) => {
+            if (isDraggingVertex) {
+              const rect = node.getBoundingClientRect();
+              const dx = e.clientX - rect.left;
+              const dy = e.clientY - rect.top;
+              const newNorm = pixelToNorm(dx, dy, el.width, el.height);
+              el.meta.vertices[index] = newNorm;
+              
+              const svg = node.querySelector('svg');
+              const polygon = svg ? svg.querySelector('polygon') : null;
+              if (polygon) {
+                const points = el.meta.vertices.map(v => `${v.x},${v.y}`).join(' ');
+                polygon.setAttribute('points', points);
+              }
+              
+              // Recompute all vertex and edge positions
+              const currentVertices = node.querySelectorAll('.vertex-handle');
+              const currentEdges = node.querySelectorAll('.edge-add-handle');
+              currentVertices.forEach(v => v.remove());
+              currentEdges.forEach(e => e.remove());
+              
+              el.meta.vertices.forEach((v, i) => {
+                const p = normToPixel(v.x, v.y, el.width, el.height);
+                const vh = document.createElement('div');
+                vh.className = 'vertex-handle';
+                vh.style.left = (p.x - 8) + 'px';
+                vh.style.top = (p.y - 8) + 'px';
+                vh.style.width = '16px';
+                vh.style.height = '16px';
+                vh.style.borderRadius = '50%';
+                vh.style.background = 'var(--emerald)';
+                vh.style.border = '2px solid white';
+                vh.style.position = 'absolute';
+                vh.style.zIndex = 20;
+                vh.style.cursor = 'move';
+                vh.dataset.vertexIndex = i;
+                node.appendChild(vh);
+              });
+              
+              for (let i = 0; i < el.meta.vertices.length; i++) {
+                const v1 = el.meta.vertices[i];
+                const v2 = el.meta.vertices[(i + 1) % el.meta.vertices.length];
+                const midX = (v1.x + v2.x) / 2;
+                const midY = (v1.y + v2.y) / 2;
+                const pixelPos = normToPixel(midX, midY, el.width, el.height);
+                
+                const edgeHandle = document.createElement('div');
+                edgeHandle.className = 'edge-add-handle';
+                edgeHandle.style.left = (pixelPos.x - 10) + 'px';
+                edgeHandle.style.top = (pixelPos.y - 10) + 'px';
+                edgeHandle.style.width = '20px';
+                edgeHandle.style.height = '20px';
+                edgeHandle.style.borderRadius = '50%';
+                edgeHandle.style.background = 'rgba(255,255,255,0.9)';
+                edgeHandle.style.border = '2px solid var(--emerald)';
+                edgeHandle.style.position = 'absolute';
+                edgeHandle.style.zIndex = 19;
+                edgeHandle.style.cursor = 'pointer';
+                edgeHandle.style.display = 'flex';
+                edgeHandle.style.alignItems = 'center';
+                edgeHandle.style.justifyContent = 'center';
+                edgeHandle.style.fontSize = '14px';
+                edgeHandle.style.color = 'var(--emerald)';
+                edgeHandle.style.fontWeight = 'bold';
+                edgeHandle.textContent = '+';
+                edgeHandle.dataset.edgeIndex = i;
+                
+                edgeHandle.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  selectElement(el.id);
+                  const newVertex = { x: midX, y: midY };
+                  el.meta.vertices.splice(i + 1, 0, newVertex);
+                  pushHistory();
+                  redrawElement(el);
+                });
+                node.appendChild(edgeHandle);
+              }
+            }
+          });
+          document.addEventListener('mouseup', () => {
+            if (isDraggingVertex) {
+              pushHistory();
+            }
+            isDraggingVertex = false;
+          });
+          node.appendChild(vHandle);
+        });
+        
+        for (let i = 0; i < el.meta.vertices.length; i++) {
+          const v1 = el.meta.vertices[i];
+          const v2 = el.meta.vertices[(i + 1) % el.meta.vertices.length];
+          const midX = (v1.x + v2.x) / 2;
+          const midY = (v1.y + v2.y) / 2;
+          const pixelPos = normToPixel(midX, midY, el.width, el.height);
+          
+          const edgeHandle = document.createElement('div');
+          edgeHandle.className = 'edge-add-handle';
+          edgeHandle.style.left = (pixelPos.x - 10) + 'px';
+          edgeHandle.style.top = (pixelPos.y - 10) + 'px';
+          edgeHandle.style.width = '20px';
+          edgeHandle.style.height = '20px';
+          edgeHandle.style.borderRadius = '50%';
+          edgeHandle.style.background = 'rgba(255,255,255,0.9)';
+          edgeHandle.style.border = '2px solid var(--emerald)';
+          edgeHandle.style.position = 'absolute';
+          edgeHandle.style.zIndex = 19;
+          edgeHandle.style.cursor = 'pointer';
+          edgeHandle.style.display = 'flex';
+          edgeHandle.style.alignItems = 'center';
+          edgeHandle.style.justifyContent = 'center';
+          edgeHandle.style.fontSize = '14px';
+          edgeHandle.style.color = 'var(--emerald)';
+          edgeHandle.style.fontWeight = 'bold';
+          edgeHandle.textContent = '+';
+          edgeHandle.dataset.edgeIndex = i;
+          
+          edgeHandle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectElement(el.id);
+            const newVertex = { x: midX, y: midY };
+            el.meta.vertices.splice(i + 1, 0, newVertex);
+            pushHistory();
+            redrawElement(el);
+          });
+          node.appendChild(edgeHandle);
+        }
+      }
     }
   });
   document.addEventListener('mouseup', ()=>{
     if (dragging && (el.left !== ox || el.top !== oy)) pushHistory();
-    if (resizing && (el.left !== ox || el.top !== oy || el.width !== ow || el.height !== oh)) pushHistory();
+    if (resizing && (el.left !== ox || el.top !== oy || el.width !== ow || el.height !== oh)) {
+      pushHistory();
+      // Redraw element to ensure all handles are correct after resize
+      redrawElement(el);
+    }
     dragging = false; resizing = false; resizeHandleType = null;
     hideGuides();
   });
@@ -1747,16 +2068,18 @@ function renderTab(tab, id) {
       { id: 'square', label: 'Square', svg: `<rect x="5" y="5" width="90" height="90" fill="#12181F" rx="8"/>` },
       { id: 'ellipse', label: 'Ellipse', svg: `<ellipse cx="50" cy="50" rx="45" ry="45" fill="#12181F"/>` },
       { id: 'line', label: 'Line', svg: `<line x1="10" y1="50" x2="90" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/>` },
-      { id: 'arrow', label: 'Arrow', svg: `<line x1="10" y1="50" x2="65" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/><polygon points="65,30 90,50 65,70" fill="#12181F"/>` }
+      { id: 'arrow', label: 'Arrow', svg: `<line x1="10" y1="50" x2="65" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/><polygon points="65,30 90,50 65,70" fill="#12181F"/>` },
+      { id: 'special', label: 'Special', svg: `<polygon points="50,15 85,85 15,85" fill="#12181F"/>` }
     ];
     body.innerHTML = `
       <div class="field">
         <div class="field-label">Shape Type</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;">
           ${shapeTypes.map(st => `
             <button class="shape-type-btn ${(m.shapeType||'square')===st.id?'active':''}" 
                     onclick="setMeta('${id}','shapeType','${st.id}'); redrawElement(elements['${id}']); renderTab('appearance','${id}');" 
-                    title="${st.label}">
+                    title="${st.label}"
+                    style="flex-shrink:0;">
               <svg width="100%" height="100%" viewBox="0 0 100 100">${st.svg}</svg>
             </button>
           `).join('')}
