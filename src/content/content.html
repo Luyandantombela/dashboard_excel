@@ -87,6 +87,12 @@
   .style-toggle.active{background:var(--ink);color:#fff;border-color:var(--ink);}
   .style-toggle:hover:not(.active){border-color:var(--emerald);}
 
+  /* Shape type specific buttons */
+  .shape-type-btn{width:60px;height:60px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:10px;}
+  .shape-type-btn svg{width:100%;height:100%;}
+  .shape-type-btn.active{border-color:var(--emerald);box-shadow:0 0 0 3px rgba(30,127,92,0.15);}
+  .shape-type-btn:hover:not(.active){border-color:var(--emerald);}
+
   .color-swatch-btn{width:100%;height:34px;border-radius:7px;border:1px solid var(--line);cursor:pointer;display:flex;align-items:center;padding:0 10px;gap:8px;background:#fff;}
   .color-swatch-btn .chip{width:18px;height:18px;border-radius:5px;border:1px solid rgba(0,0,0,0.12);flex-shrink:0;background-size:8px 8px;}
   .color-swatch-btn .hex-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
@@ -1738,20 +1744,20 @@ function renderTab(tab, id) {
   } else if (tab === 'appearance' && el.type === 'shape') {
     const m = el.meta || {};
     const shapeTypes = [
-      { id: 'square', label: 'Square', svg: `<rect x="2" y="2" width="16" height="16" fill="#12181F" />` },
-      { id: 'ellipse', label: 'Ellipse', svg: `<ellipse cx="10" cy="10" rx="8" ry="8" fill="#12181F" />` },
-      { id: 'line', label: 'Line', svg: `<line x1="2" y1="10" x2="18" y2="10" stroke="#12181F" stroke-width="3" stroke-linecap="round"/>` },
-      { id: 'arrow', label: 'Arrow', svg: `<line x1="2" y1="10" x2="13" y2="10" stroke="#12181F" stroke-width="3" stroke-linecap="round"/><polygon points="13,6 18,10 13,14" fill="#12181F"/>` }
+      { id: 'square', label: 'Square', svg: `<rect x="5" y="5" width="90" height="90" fill="#12181F" rx="8"/>` },
+      { id: 'ellipse', label: 'Ellipse', svg: `<ellipse cx="50" cy="50" rx="45" ry="45" fill="#12181F"/>` },
+      { id: 'line', label: 'Line', svg: `<line x1="10" y1="50" x2="90" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/>` },
+      { id: 'arrow', label: 'Arrow', svg: `<line x1="10" y1="50" x2="65" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/><polygon points="65,30 90,50 65,70" fill="#12181F"/>` }
     ];
     body.innerHTML = `
       <div class="field">
         <div class="field-label">Shape Type</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
           ${shapeTypes.map(st => `
-            <button class="style-toggle ${(m.shapeType||'square')===st.id?'active':''}" 
+            <button class="shape-type-btn ${(m.shapeType||'square')===st.id?'active':''}" 
                     onclick="setMeta('${id}','shapeType','${st.id}'); redrawElement(elements['${id}']); renderTab('appearance','${id}');" 
                     title="${st.label}">
-              <svg width="20" height="20" viewBox="0 0 20 20">${st.svg}</svg>
+              <svg width="100%" height="100%" viewBox="0 0 100 100">${st.svg}</svg>
             </button>
           `).join('')}
         </div>
