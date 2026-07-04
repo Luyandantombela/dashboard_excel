@@ -258,7 +258,9 @@ window.OverlayElements = (function () {
       alignItems: 'center',
       justifyContent: 'center',
       fontFamily: 'Inter, sans-serif',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      transform: el.rotation ? `rotate(${el.rotation}deg)` : 'none',
+      transformOrigin: 'center center'
     };
     return s;
   }
@@ -361,6 +363,11 @@ window.OverlayElements = (function () {
         const m = el.meta || {};
         const shapeType = m.shapeType || 'square';
         const fillColor = el.fill || '#E8A33D';
+        const borderColor = m.borderColor || fillColor;
+        const borderWidth = m.borderWidth != null ? m.borderWidth : 0;
+        const borderRadius = m.borderRadius != null ? m.borderRadius : 0;
+        const opacity = m.opacity != null ? m.opacity : 1;
+        const shadowStyle = m.shadowStyle || 'none';
 
         // Set up base styles
         const baseStyles = {
@@ -369,7 +376,10 @@ window.OverlayElements = (function () {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          opacity: opacity,
+          boxShadow: shadowStyle,
+          borderRadius: borderRadius + 'px'
         };
 
         applyStyle(node, baseStyles);
@@ -377,22 +387,22 @@ window.OverlayElements = (function () {
         // Create SVG for different shape types using fixed viewBox
         let svgContent = '';
         const viewBoxSize = 100;
-        const strokeWidth = 3;
+        const strokeWidth = borderWidth;
 
         switch (shapeType) {
           case 'square':
-            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${borderColor}" stroke-width="${strokeWidth}" rx="${borderRadius}" ry="${borderRadius}"/>`;
             break;
           case 'ellipse':
-            svgContent = `<ellipse cx="${viewBoxSize/2}" cy="${viewBoxSize/2}" rx="${(viewBoxSize - strokeWidth)/2}" ry="${(viewBoxSize - strokeWidth)/2}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            svgContent = `<ellipse cx="${viewBoxSize/2}" cy="${viewBoxSize/2}" rx="${(viewBoxSize - strokeWidth)/2}" ry="${(viewBoxSize - strokeWidth)/2}" fill="${fillColor}" stroke="${borderColor}" stroke-width="${strokeWidth}"/>`;
             break;
           case 'line':
-            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
+            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${borderColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
             break;
           case 'arrow':
             const arrowHeadSize = viewBoxSize * 0.2;
-            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - arrowHeadSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>
-<polygon points="${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 - arrowHeadSize/1.5} ${viewBoxSize - strokeWidth},${viewBoxSize/2} ${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 + arrowHeadSize/1.5}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth/2}"/>`;
+            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - arrowHeadSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${borderColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>
+<polygon points="${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 - arrowHeadSize/1.5} ${viewBoxSize - strokeWidth},${viewBoxSize/2} ${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 + arrowHeadSize/1.5}" fill="${borderColor}" stroke="${borderColor}" stroke-width="${strokeWidth/2}"/>`;
             break;
           case 'special':
             // For special polygon, we use normalized coordinates (0-100) in meta.vertices
@@ -405,10 +415,10 @@ window.OverlayElements = (function () {
               ];
             }
             const points = m.vertices.map(v => `${v.x},${v.y}`).join(' ');
-            svgContent = `<polygon points="${points}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            svgContent = `<polygon points="${points}" fill="${fillColor}" stroke="${borderColor}" stroke-width="${strokeWidth}"/>`;
             break;
           default:
-            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${borderColor}" stroke-width="${strokeWidth}" rx="${borderRadius}" ry="${borderRadius}"/>`;
         }
 
         node.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="none">${svgContent}</svg>`;
@@ -479,7 +489,8 @@ window.OverlayElements = (function () {
       label: def.label || '',
       fill: null,
       binding: def.binding || null,
-      meta: def.meta || {}
+      meta: def.meta || {},
+      rotation: 0
     }, overrides || {});
   }
 
