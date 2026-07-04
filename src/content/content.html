@@ -1491,7 +1491,7 @@ function redrawElement(el) {
 
 function makeDraggable(node, handles, rotateHandle, el) {
   let dragging=false, resizing=false, rotating=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0, resizeHandleType=null, startRotation=0;
-  let groupChildInitialPositions = []; // For storing initial child positions when dragging group
+  let groupChildInitialPositions = []; // For storing initial child positions when dragging or resizing group
   
   node.addEventListener('mousedown', (e)=>{
     if (e.button !== 0) return; // ignore right-click, handled by contextmenu
@@ -1499,6 +1499,24 @@ function makeDraggable(node, handles, rotateHandle, el) {
     const isVertexHandle = e.target.classList.contains('vertex-handle');
     const isEdgeAddHandle = e.target.classList.contains('edge-add-handle');
     const isRotateHandle = e.target.classList.contains('rotate-handle');
+    
+    // Store initial child positions for groups on any interaction (drag/resize/rotate)
+    if (el.type === 'group' && el.meta && el.meta.children) {
+      groupChildInitialPositions = el.meta.children.map(childId => {
+        const child = elements[childId];
+        if (child) {
+          return {
+            id: childId,
+            relLeft: child.left - el.left,
+            relTop: child.top - el.top,
+            width: child.width,
+            height: child.height
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    }
+    
     if (isResizeHandle) {
       resizing = true;
       resizeHandleType = e.target.dataset.handleType;
@@ -1522,21 +1540,6 @@ function makeDraggable(node, handles, rotateHandle, el) {
     sx=e.clientX; sy=e.clientY;
     ox=el.left; oy=el.top;
     
-    // If it's a group, store initial child positions relative to group
-    if (el.type === 'group' && el.meta && el.meta.children) {
-      groupChildInitialPositions = el.meta.children.map(childId => {
-        const child = elements[childId];
-        if (child) {
-          return {
-            id: childId,
-            relLeft: child.left - ox,
-            relTop: child.top - oy
-          };
-        }
-        return null;
-      }).filter(Boolean);
-    }
-    
     e.preventDefault();
   });
   document.addEventListener('mousemove', (e)=>{
@@ -1551,15 +1554,19 @@ function makeDraggable(node, handles, rotateHandle, el) {
       
       // Handle group children dragging using stored relative positions
       if (el.type === 'group' && groupChildInitialPositions.length > 0) {
-        groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop }) => {
+        groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height }) => {
           const child = elements[childId];
           if (child) {
             const childNode = document.getElementById('node_' + childId);
             if (childNode) {
               child.left = el.left + relLeft;
               child.top = el.top + relTop;
+              child.width = width; // Keep original size when dragging
+              child.height = height;
               childNode.style.left = child.left + 'px';
               childNode.style.top = child.top + 'px';
+              childNode.style.width = child.width + 'px';
+              childNode.style.height = child.height + 'px';
             }
           }
         });
@@ -1572,7 +1579,34 @@ function makeDraggable(node, handles, rotateHandle, el) {
             const groupNode = document.getElementById('node_' + groupEl.id);
             if (groupNode) {
               const isTouching = isElementsIntersecting(el, groupEl);
-              groupNode.style.borderColor = isTouching ? '#ff6b6b' : '';
+              
+              if (isTouching) {
+                // Ensure we have a visible border for feedback
+                groupNode.style.borderStyle = 'solid';
+                groupNode.style.borderWidth = '2px';
+                groupNode.style.borderColor = '#ff6b6b';
+              } else {
+                // Reset border to group's defined style
+                const m = groupEl.meta || {};
+                if (m.defineBordersIndependently) {
+                  groupNode.style.borderTopStyle = m.borderTopStyle || 'none';
+                  groupNode.style.borderRightStyle = m.borderRightStyle || 'none';
+                  groupNode.style.borderBottomStyle = m.borderBottomStyle || 'none';
+                  groupNode.style.borderLeftStyle = m.borderLeftStyle || 'none';
+                  groupNode.style.borderTopWidth = (m.borderTopWidth || 1) + 'px';
+                  groupNode.style.borderRightWidth = (m.borderRightWidth || 1) + 'px';
+                  groupNode.style.borderBottomWidth = (m.borderBottomWidth || 1) + 'px';
+                  groupNode.style.borderLeftWidth = (m.borderLeftWidth || 1) + 'px';
+                  groupNode.style.borderTopColor = m.borderTopColor || '#000000';
+                  groupNode.style.borderRightColor = m.borderRightColor || '#000000';
+                  groupNode.style.borderBottomColor = m.borderBottomColor || '#000000';
+                  groupNode.style.borderLeftColor = m.borderLeftColor || '#000000';
+                } else {
+                  groupNode.style.borderStyle = m.borderStyle || 'none';
+                  groupNode.style.borderWidth = (m.borderWidth || 1) + 'px';
+                  groupNode.style.borderColor = m.borderColor || '#000000';
+                }
+              }
             }
           }
         });
@@ -1614,27 +1648,17 @@ function makeDraggable(node, handles, rotateHandle, el) {
       node.style.height = el.height + 'px';
       showGuides(snap);
       
-      // Handle group children resizing
-      if (el.type === 'group' && el.meta && el.meta.children) {
-        const scaleX = newWidth / ow;
-        const scaleY = newHeight / oh;
-        const offsetX = newLeft - ox;
-        const offsetY = newTop - oy;
-        
-        el.meta.children.forEach(childId => {
+      // Handle group children resizing: keep them stationary relative to group
+      if (el.type === 'group' && groupChildInitialPositions.length > 0) {
+        groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height }) => {
           const child = elements[childId];
           if (child) {
             const childNode = document.getElementById('node_' + childId);
             if (childNode) {
-              // Calculate new position and size
-              const relX = child.left - ox;
-              const relY = child.top - oy;
-              
-              child.left = newLeft + relX * scaleX;
-              child.top = newTop + relY * scaleY;
-              child.width = child.width * scaleX;
-              child.height = child.height * scaleY;
-              
+              child.left = el.left + relLeft;
+              child.top = el.top + relTop;
+              child.width = width; // Keep original size
+              child.height = height;
               childNode.style.left = child.left + 'px';
               childNode.style.top = child.top + 'px';
               childNode.style.width = child.width + 'px';
@@ -1697,7 +1721,26 @@ function makeDraggable(node, handles, rotateHandle, el) {
             const isInside = isElementInsideElement(el, groupEl);
             const groupNode = document.getElementById('node_' + groupEl.id);
             if (groupNode) {
-              groupNode.style.borderColor = '';
+              // Reset border to group's defined style
+              const m = groupEl.meta || {};
+              if (m.defineBordersIndependently) {
+                groupNode.style.borderTopStyle = m.borderTopStyle || 'none';
+                groupNode.style.borderRightStyle = m.borderRightStyle || 'none';
+                groupNode.style.borderBottomStyle = m.borderBottomStyle || 'none';
+                groupNode.style.borderLeftStyle = m.borderLeftStyle || 'none';
+                groupNode.style.borderTopWidth = (m.borderTopWidth || 1) + 'px';
+                groupNode.style.borderRightWidth = (m.borderRightWidth || 1) + 'px';
+                groupNode.style.borderBottomWidth = (m.borderBottomWidth || 1) + 'px';
+                groupNode.style.borderLeftWidth = (m.borderLeftWidth || 1) + 'px';
+                groupNode.style.borderTopColor = m.borderTopColor || '#000000';
+                groupNode.style.borderRightColor = m.borderRightColor || '#000000';
+                groupNode.style.borderBottomColor = m.borderBottomColor || '#000000';
+                groupNode.style.borderLeftColor = m.borderLeftColor || '#000000';
+              } else {
+                groupNode.style.borderStyle = m.borderStyle || 'none';
+                groupNode.style.borderWidth = (m.borderWidth || 1) + 'px';
+                groupNode.style.borderColor = m.borderColor || '#000000';
+              }
             }
             if (isInside) {
               // Remove from old group if present
