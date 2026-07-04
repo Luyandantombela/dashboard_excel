@@ -369,37 +369,36 @@ window.OverlayElements = (function () {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'visible'
+          overflow: 'hidden'
         };
 
         applyStyle(node, baseStyles);
 
-        // Create SVG for different shape types
+        // Create SVG for different shape types using fixed viewBox
         let svgContent = '';
-        const width = el.width || 90;
-        const height = el.height || 90;
+        const viewBoxSize = 100;
         const strokeWidth = 3;
 
         switch (shapeType) {
           case 'square':
-            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${width - strokeWidth}" height="${height - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
             break;
           case 'ellipse':
-            svgContent = `<ellipse cx="${width/2}" cy="${height/2}" rx="${(width - strokeWidth)/2}" ry="${(height - strokeWidth)/2}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            svgContent = `<ellipse cx="${viewBoxSize/2}" cy="${viewBoxSize/2}" rx="${(viewBoxSize - strokeWidth)/2}" ry="${(viewBoxSize - strokeWidth)/2}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
             break;
           case 'line':
-            svgContent = `<line x1="${strokeWidth/2}" y1="${height/2}" x2="${width - strokeWidth/2}" y2="${height/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
+            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
             break;
           case 'arrow':
-            const arrowHeadSize = Math.min(width, height) * 0.25;
-            svgContent = `<line x1="${strokeWidth/2}" y1="${height/2}" x2="${width - arrowHeadSize - strokeWidth/2}" y2="${height/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>
-<polygon points="${width - arrowHeadSize - strokeWidth/2},${height/2 - arrowHeadSize/1.5} ${width - strokeWidth/2},${height/2} ${width - arrowHeadSize - strokeWidth/2},${height/2 + arrowHeadSize/1.5}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth/2}"/>`;
+            const arrowHeadSize = viewBoxSize * 0.2;
+            svgContent = `<line x1="${strokeWidth}" y1="${viewBoxSize/2}" x2="${viewBoxSize - arrowHeadSize - strokeWidth}" y2="${viewBoxSize/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>
+<polygon points="${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 - arrowHeadSize/1.5} ${viewBoxSize - strokeWidth},${viewBoxSize/2} ${viewBoxSize - arrowHeadSize - strokeWidth},${viewBoxSize/2 + arrowHeadSize/1.5}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth/2}"/>`;
             break;
           default:
-            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${width - strokeWidth}" height="${height - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${viewBoxSize - strokeWidth}" height="${viewBoxSize - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
         }
 
-        node.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${width} ${height}">${svgContent}</svg>`;
+        node.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" preserveAspectRatio="none">${svgContent}</svg>`;
         break;
       case 'image':
         applyStyle(node, {
