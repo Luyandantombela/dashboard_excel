@@ -387,7 +387,11 @@ window.OverlayElements = (function () {
         // Create SVG for different shape types using fixed viewBox
         let svgContent = '';
         const viewBoxSize = 100;
-        const strokeWidth = borderWidth;
+        let strokeWidth = borderWidth;
+        // For line and arrow, ensure we have a minimum stroke width if borderWidth is 0
+        if ((shapeType === 'line' || shapeType === 'arrow') && strokeWidth === 0) {
+          strokeWidth = 3;
+        }
 
         switch (shapeType) {
           case 'square':
