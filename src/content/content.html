@@ -60,6 +60,9 @@
   .resize-handle.bottom{bottom:-5px;left:50%;transform:translateX(-50%);cursor:ns-resize;}
   .resize-handle.bottom-left{bottom:-5px;left:-5px;cursor:nesw-resize;}
   .resize-handle.left{left:-5px;top:50%;transform:translateY(-50%);cursor:ew-resize;}
+  .rotate-handle{position:absolute;width:16px;height:16px;background:var(--emerald);border:2px solid #fff;border-radius:50%;display:none;z-index:6;top:-30px;left:50%;transform:translateX(-50%);cursor:grab;}
+  .rotate-handle:active{cursor:grabbing;}
+  .dash-el.selected .rotate-handle{display:block;}
 
   .prop-panel{position:absolute;width:270px;background:var(--panel);border-radius:12px;box-shadow:var(--shadow-lg);border:1px solid var(--line);z-index:9000;overflow:hidden;}
   .prop-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--ink);cursor:grab;}
@@ -1007,7 +1010,15 @@ function openColorPicker(anchor, initialHex, onChange, onCommit){
   let popLeft = rect.left;
   if (popLeft + 236 > window.innerWidth) popLeft = window.innerWidth - 244;
   pop.style.left = Math.max(6, popLeft) + 'px';
-  pop.style.top = (rect.bottom + 8) + 'px';
+  
+  const popHeight = 220; // estimated height of the popover
+  if (rect.bottom + 8 + popHeight > window.innerHeight) {
+    // Place above the anchor
+    pop.style.top = (rect.top - 8 - popHeight) + 'px';
+  } else {
+    // Place below the anchor
+    pop.style.top = (rect.bottom + 8) + 'px';
+  }
 
   const svCanvas = document.getElementById('svCanvas'), svCtx = svCanvas.getContext('2d');
   const hueCanvas = document.getElementById('hueCanvas'), hueCtx = hueCanvas.getContext('2d');
@@ -1192,6 +1203,12 @@ function renderElement(el) {
     node.appendChild(handle);
     handles.push(handle);
   });
+  
+  // Add rotation handle
+  const rotateHandle = document.createElement('div');
+  rotateHandle.className = 'rotate-handle';
+  node.appendChild(rotateHandle);
+  
   node.classList.add('dash-el');
 
   // If it's a special shape, add vertex handles and edge add buttons
@@ -1212,11 +1229,12 @@ function renderElement(el) {
     showSpecialHandles(node);
   }
 
-  makeDraggable(node, handles, el);
+  makeDraggable(node, handles, rotateHandle, el);
   node.addEventListener('mousedown', (e) => { 
     if (!e.target.classList.contains('resize-handle') && 
         !e.target.classList.contains('vertex-handle') &&
-        !e.target.classList.contains('edge-add-handle')) {
+        !e.target.classList.contains('edge-add-handle') &&
+        !e.target.classList.contains('rotate-handle')) {
       selectElement(el.id); 
     } 
   });
@@ -1306,13 +1324,14 @@ function setupSpecialShape(node, el) {
       vHandle.style.display = 'none'; // Initially hidden
 
       // Dragging logic for vertex
-      let isDraggingVertex = false;
-      vHandle.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        selectElement(el.id);
-        isDraggingVertex = true;
-      });
+          let isDraggingVertex = false;
+          vHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            selectElement(el.id);
+            isDraggingVertex = true;
+          });
       document.addEventListener('mousemove', (e) => {
         if (isDraggingVertex) {
           const rect = node.getBoundingClientRect();
@@ -1484,16 +1503,30 @@ function redrawElement(el) {
   }
 }
 
-function makeDraggable(node, handles, el) {
-  let dragging=false, resizing=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0, resizeHandleType=null;
+function makeDraggable(node, handles, rotateHandle, el) {
+  let dragging=false, resizing=false, rotating=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0, resizeHandleType=null, startRotation=0;
   node.addEventListener('mousedown', (e)=>{
     if (e.button !== 0) return; // ignore right-click, handled by contextmenu
     const isResizeHandle = e.target.classList.contains('resize-handle');
+    const isVertexHandle = e.target.classList.contains('vertex-handle');
+    const isEdgeAddHandle = e.target.classList.contains('edge-add-handle');
+    const isRotateHandle = e.target.classList.contains('rotate-handle');
     if (isResizeHandle) {
       resizing = true;
       resizeHandleType = e.target.dataset.handleType;
       sx=e.clientX; sy=e.clientY;
       ox=el.left; oy=el.top; ow=el.width; oh=el.height;
+      e.stopPropagation(); e.preventDefault();
+      return;
+    }
+    if (isRotateHandle) {
+      rotating = true;
+      sx=e.clientX; sy=e.clientY;
+      startRotation = el.rotation || 0;
+      e.stopPropagation(); e.preventDefault();
+      return;
+    }
+    if (isVertexHandle || isEdgeAddHandle) {
       e.stopPropagation(); e.preventDefault();
       return;
     }
@@ -1715,6 +1748,15 @@ function makeDraggable(node, handles, el) {
           node.appendChild(edgeHandle);
         }
       }
+    } else if (rotating) {
+      const rect = node.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const startAngle = Math.atan2(sy - centerY, sx - centerX);
+      const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+      const deltaDeg = ((currentAngle - startAngle) * 180) / Math.PI;
+      el.rotation = startRotation + deltaDeg;
+      node.style.transform = `rotate(${el.rotation}deg)`;
     }
   });
   document.addEventListener('mouseup', ()=>{
@@ -1724,7 +1766,8 @@ function makeDraggable(node, handles, el) {
       // Redraw element to ensure all handles are correct after resize
       redrawElement(el);
     }
-    dragging = false; resizing = false; resizeHandleType = null;
+    if (rotating && el.rotation !== startRotation) pushHistory();
+    dragging = false; resizing = false; rotating = false; resizeHandleType = null;
     hideGuides();
   });
 }
@@ -2235,6 +2278,7 @@ function renderTab(tab, id) {
       { id: 'arrow', label: 'Arrow', svg: `<line x1="10" y1="50" x2="65" y2="50" stroke="#12181F" stroke-width="8" stroke-linecap="round"/><polygon points="65,30 90,50 65,70" fill="#12181F"/>` },
       { id: 'special', label: 'Special', svg: `<polygon points="50,15 85,85 15,85" fill="#12181F"/>` }
     ];
+    const shadowStyles = ['none','0 2px 4px rgba(0,0,0,0.1)','0 4px 8px rgba(0,0,0,0.15)','0 8px 16px rgba(0,0,0,0.2)','0 16px 32px rgba(0,0,0,0.25)'];
     body.innerHTML = `
       <div class="field">
         <div class="field-label">Shape Type</div>
@@ -2256,10 +2300,39 @@ function renderTab(tab, id) {
           <span class="hex-label" id="shapeColorHex">${el.fill||'#E8A33D'}</span>
         </button>
       </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Border width</div>
+          <input class="field-input mono" type="number" min="0" value="${m.borderWidth!=null?m.borderWidth:0}" oninput="setMeta('${id}','borderWidth',parseFloat(this.value)||0); redrawElement(elements['${id}']);" onblur="pushHistory()">
+        </div>
+        <div class="field">
+          <div class="field-label">Border color</div>
+          <button class="color-swatch-btn" id="borderColorSwatchBtn" type="button">
+            <span class="chip" id="borderColorChip" style="background:${m.borderColor||el.fill||'#E8A33D'}"></span>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Roundness</div>
+        <input class="field-input mono" type="number" min="0" value="${m.borderRadius!=null?m.borderRadius:0}" oninput="setMeta('${id}','borderRadius',parseFloat(this.value)||0); redrawElement(elements['${id}']);" onblur="pushHistory()">
+      </div>
+      <div class="field">
+        <div class="field-label">Element shadow</div>
+        <select class="field-input" onchange="setMeta('${id}','shadowStyle',this.value); redrawElement(elements['${id}']);" onblur="pushHistory()">
+          ${shadowStyles.map((s, i)=>`<option value="${s}" ${((m.shadowStyle||'none')===s)?'selected':''}>${s==='none'?'None':['Light','Medium','Heavy','Extra Heavy'][i-1]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Opacity</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="field-input mono" type="number" min="0" max="100" value="${Math.round((m.opacity!=null?m.opacity*100:100))}" oninput="setMeta('${id}','opacity',parseFloat(this.value)/100); redrawElement(elements['${id}']);" onblur="pushHistory()" style="flex:1;">
+          <span style="color:var(--text-faint);width:28px;text-align:right;">%</span>
+        </div>
+      </div>
       <div class="divider"></div>
       <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
     `;
-    // Add color picker event listener
+    // Add color picker event listeners
     document.getElementById('shapeColorSwatchBtn').addEventListener('click', function(){
       openColorPicker(this, elements[id].fill || '#E8A33D',
         (hex)=>{ 
@@ -2268,6 +2341,12 @@ function renderTab(tab, id) {
           document.getElementById('shapeColorHex').textContent = hex; 
         },
         ()=>{ commitColorChange(id); }
+      );
+    });
+    document.getElementById('borderColorSwatchBtn').addEventListener('click', function(){
+      openColorPicker(this, (elements[id].meta && elements[id].meta.borderColor) || elements[id].fill || '#E8A33D',
+        (hex)=>{ setMeta(id, 'borderColor', hex); redrawElement(elements[id]); document.getElementById('borderColorChip').style.background=hex; },
+        ()=>{ pushHistory(); }
       );
     });
   } else if (tab === 'appearance' && el.type === 'graph') {
