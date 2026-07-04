@@ -609,19 +609,51 @@ const LAYER_ICON_PATHS = {
 function renderLayersList(){
   const listEl = document.getElementById('layersList');
   if (!listEl) return;
-  const items = Object.values(elements)
+  const allElements = Object.values(elements)
     .map(el => ({ el, z: el.z || 0 }))
     .sort((a,b) => b.z - a.z);
-  if (!items.length){
+  
+  if (!allElements.length){
     listEl.innerHTML = '<div class="layers-empty">No elements yet. Add one from the Elements tab and it\'ll show up here.</div>';
     return;
   }
-  listEl.innerHTML = items.map(({el}) => `
-    <div class="layer-row ${selectedId===el.id?'active':''}" data-layer-id="${el.id}">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${LAYER_ICON_PATHS[el.type] || '<circle cx="12" cy="12" r="3"/>'}</svg>
-      <span class="layer-name" data-layer-name="${el.id}">${escapeHtml(el.name || OverlayElements.TYPE_LABELS[el.type])}</span>
-    </div>
-  `).join('');
+  
+  // Collect all child IDs
+  const allChildIds = new Set();
+  allElements.forEach(({ el }) => {
+    if (el.type === 'group' && el.meta && el.meta.children) {
+      el.meta.children.forEach(id => allChildIds.add(id));
+    }
+  });
+  
+  // Recursive function to render a layer row and its children
+  function renderLayer(item, depth = 0) {
+    const el = item.el;
+    let html = `
+      <div class="layer-row ${selectedId===el.id?'active':''}" data-layer-id="${el.id}" style="padding-left: ${depth * 12}px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${LAYER_ICON_PATHS[el.type] || '<circle cx="12" cy="12" r="3"/>'}</svg>
+        <span class="layer-name" data-layer-name="${el.id}">${escapeHtml(el.name || OverlayElements.TYPE_LABELS[el.type])}</span>
+      </div>
+    `;
+    
+    // Render children if it's a group
+    if (el.type === 'group' && el.meta && el.meta.children) {
+      el.meta.children.forEach(childId => {
+        const childItem = allElements.find(({ el: childEl }) => childEl.id === childId);
+        if (childItem) {
+          html += renderLayer(childItem, depth + 1);
+        }
+      });
+    }
+    
+    return html;
+  }
+  
+  // Render only top-level elements (not in any group's children)
+  const topLevelItems = allElements.filter(({ el }) => !allChildIds.has(el.id));
+  listEl.innerHTML = topLevelItems.map(item => renderLayer(item)).join('');
+  
+  // Add event listeners to all layer rows
   listEl.querySelectorAll('.layer-row').forEach(row => {
     const id = row.dataset.layerId;
     row.addEventListener('click', (e) => {
@@ -1418,20 +1450,30 @@ function setupSpecialShape(node, el) {
   // Global mousemove for dragging
   const handleMouseMove = (e) => {
     if (isDraggingVertex && draggingVertexIndex !== -1) {
-      const rect = node.getBoundingClientRect();
       const canvasWrap = document.getElementById('canvasWrap');
       const canvasRect = canvas.getBoundingClientRect();
 
       const canvasMouseX = e.clientX - canvasRect.left + canvasWrap.scrollLeft;
       const canvasMouseY = e.clientY - canvasRect.top + canvasWrap.scrollTop;
 
-      const dx = e.clientX - rect.left;
-      const dy = e.clientY - rect.top;
-
       const snap = computeSnapVertex(el.id, canvasMouseX, canvasMouseY);
 
-      const elRelX = snap.left - el.left;
-      const elRelY = snap.top - el.top;
+      // Calculate element-relative coordinates (account for rotation)
+      const elCenterX = el.left + el.width / 2;
+      const elCenterY = el.top + el.height / 2;
+      
+      // Vector from element center to snapped mouse position (canvas coordinates)
+      let dx = snap.left - elCenterX;
+      let dy = snap.top - elCenterY;
+      
+      // Unrotate this vector by the negative element rotation
+      const rotationRad = ((el.rotation || 0) * Math.PI) / 180;
+      const unrotatedDx = dx * Math.cos(-rotationRad) - dy * Math.sin(-rotationRad);
+      const unrotatedDy = dx * Math.sin(-rotationRad) + dy * Math.cos(-rotationRad);
+      
+      // Now convert this unrotated position relative to element's top-left corner
+      const elRelX = unrotatedDx + el.width / 2;
+      const elRelY = unrotatedDy + el.height / 2;
 
       const newNorm = pixelToNorm(elRelX, elRelY, el.width, el.height);
       m.vertices[draggingVertexIndex] = newNorm;
@@ -1500,17 +1542,27 @@ function makeDraggable(node, handles, rotateHandle, el) {
     const isEdgeAddHandle = e.target.classList.contains('edge-add-handle');
     const isRotateHandle = e.target.classList.contains('rotate-handle');
     
-    // Store initial child positions for groups on any interaction (drag/resize/rotate)
+    // Store initial child positions and rotation info for groups on any interaction
     if (el.type === 'group' && el.meta && el.meta.children) {
+      const groupCenterX = el.left + el.width / 2;
+      const groupCenterY = el.top + el.height / 2;
+      
       groupChildInitialPositions = el.meta.children.map(childId => {
         const child = elements[childId];
         if (child) {
+          const childCenterX = child.left + child.width / 2;
+          const childCenterY = child.top + child.height / 2;
+          
           return {
             id: childId,
             relLeft: child.left - el.left,
             relTop: child.top - el.top,
             width: child.width,
-            height: child.height
+            height: child.height,
+            rotation: child.rotation || 0,
+            // Distance and angle from group center
+            dx: childCenterX - groupCenterX,
+            dy: childCenterY - groupCenterY
           };
         }
         return null;
@@ -1669,42 +1721,32 @@ function makeDraggable(node, handles, rotateHandle, el) {
       }
     } else if (rotating) {
       const rect = node.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const startAngle = Math.atan2(sy - centerY, sx - centerX);
-      const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+      const groupCenterX = el.left + el.width / 2;
+      const groupCenterY = el.top + el.height / 2;
+      const startAngle = Math.atan2(sy - (rect.top + rect.height / 2), sx - (rect.left + rect.width / 2));
+      const currentAngle = Math.atan2(e.clientY - (rect.top + rect.height / 2), e.clientX - (rect.left + rect.width / 2));
       const deltaDeg = ((currentAngle - startAngle) * 180) / Math.PI;
       el.rotation = startRotation + deltaDeg;
       node.style.transform = `rotate(${el.rotation}deg)`;
       
-      // Handle group children rotation
-      if (el.type === 'group' && el.meta && el.meta.children) {
-        el.meta.children.forEach(childId => {
+      // Handle group children rotation: keep them stationary relative to group
+      if (el.type === 'group' && groupChildInitialPositions.length > 0) {
+        groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height, rotation, dx, dy }) => {
           const child = elements[childId];
           if (child) {
             const childNode = document.getElementById('node_' + childId);
             if (childNode) {
-              // Rotate child around group center
-              const groupCenterX = el.left + el.width / 2;
-              const groupCenterY = el.top + el.height / 2;
-              
-              const childCenterX = child.left + child.width / 2;
-              const childCenterY = child.top + child.height / 2;
-              
-              const dx = childCenterX - groupCenterX;
-              const dy = childCenterY - groupCenterY;
-              
-              const angleRad = (deltaDeg * Math.PI) / 180;
-              
-              const newX = dx * Math.cos(angleRad) - dy * Math.sin(angleRad) + groupCenterX;
-              const newY = dx * Math.sin(angleRad) + dy * Math.cos(angleRad) + groupCenterY;
-              
-              child.left = newX - child.width / 2;
-              child.top = newY - child.height / 2;
-              child.rotation = (child.rotation || 0) + deltaDeg;
+              // Keep child's rotation unchanged relative to group: maintain original position
+              child.left = el.left + relLeft;
+              child.top = el.top + relTop;
+              child.width = width;
+              child.height = height;
+              child.rotation = rotation;
               
               childNode.style.left = child.left + 'px';
               childNode.style.top = child.top + 'px';
+              childNode.style.width = child.width + 'px';
+              childNode.style.height = child.height + 'px';
               childNode.style.transform = `rotate(${child.rotation}deg)`;
             }
           }
