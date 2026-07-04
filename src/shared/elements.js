@@ -44,7 +44,7 @@ window.OverlayElements = (function () {
     icon:     { w:44,  h:44,  label:'', meta: { iconName: 'zap', iconSize: 24, borderStyle: 'none', shadowStyle: 'none' } },
     image:    { w:160, h:110, label:'Image' },
     text:     { w:180, h:28,  label:'Section title' },
-    shape:    { w:90,  h:90,  label:'' },
+    shape:    { w:90,  h:90,  label:'', meta: { shapeType: 'square' } },
     graph:    { w:280, h:170, label:'', binding:'Sheet1!B2:E10', meta:{ chartType:'line' } },
     group:    { w:320, h:220, label:'Group' },
     repeating: { w:320, h:160, label:'Repeating group', binding:'Sheet1!A2:D20' },
@@ -358,7 +358,48 @@ window.OverlayElements = (function () {
         break;
       }
       case 'shape':
-        applyStyle(node, { background: el.fill || '#E8A33D', border: '1.5px solid ' + (el.fill || '#E8A33D') });
+        const m = el.meta || {};
+        const shapeType = m.shapeType || 'square';
+        const fillColor = el.fill || '#E8A33D';
+
+        // Set up base styles
+        const baseStyles = {
+          background: 'transparent',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'visible'
+        };
+
+        applyStyle(node, baseStyles);
+
+        // Create SVG for different shape types
+        let svgContent = '';
+        const width = el.width || 90;
+        const height = el.height || 90;
+        const strokeWidth = 3;
+
+        switch (shapeType) {
+          case 'square':
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${width - strokeWidth}" height="${height - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            break;
+          case 'ellipse':
+            svgContent = `<ellipse cx="${width/2}" cy="${height/2}" rx="${(width - strokeWidth)/2}" ry="${(height - strokeWidth)/2}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+            break;
+          case 'line':
+            svgContent = `<line x1="${strokeWidth/2}" y1="${height/2}" x2="${width - strokeWidth/2}" y2="${height/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
+            break;
+          case 'arrow':
+            const arrowHeadSize = Math.min(width, height) * 0.25;
+            svgContent = `<line x1="${strokeWidth/2}" y1="${height/2}" x2="${width - arrowHeadSize - strokeWidth/2}" y2="${height/2}" stroke="${fillColor}" stroke-width="${strokeWidth}" stroke-linecap="round"/>
+<polygon points="${width - arrowHeadSize - strokeWidth/2},${height/2 - arrowHeadSize/1.5} ${width - strokeWidth/2},${height/2} ${width - arrowHeadSize - strokeWidth/2},${height/2 + arrowHeadSize/1.5}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth/2}"/>`;
+            break;
+          default:
+            svgContent = `<rect x="${strokeWidth/2}" y="${strokeWidth/2}" width="${width - strokeWidth}" height="${height - strokeWidth}" fill="${fillColor}" stroke="${fillColor}" stroke-width="${strokeWidth}"/>`;
+        }
+
+        node.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 ${width} ${height}">${svgContent}</svg>`;
         break;
       case 'image':
         applyStyle(node, {
