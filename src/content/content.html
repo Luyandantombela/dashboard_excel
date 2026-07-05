@@ -1450,31 +1450,32 @@ function setupSpecialShape(node, el) {
   // Global mousemove for dragging
   const handleMouseMove = (e) => {
     if (isDraggingVertex && draggingVertexIndex !== -1) {
-      const canvasWrap = document.getElementById('canvasWrap');
-      const canvasRect = canvas.getBoundingClientRect();
-
-      const canvasMouseX = e.clientX - canvasRect.left + canvasWrap.scrollLeft;
-      const canvasMouseY = e.clientY - canvasRect.top + canvasWrap.scrollTop;
-
-      const snap = computeSnapVertex(el.id, canvasMouseX, canvasMouseY);
-
-      // Calculate element-relative coordinates (account for rotation)
-      const elCenterX = el.left + el.width / 2;
-      const elCenterY = el.top + el.height / 2;
+      // First get mouse position relative to node's top-left corner (accounting for rotation)
+      const nodeRect = node.getBoundingClientRect();
+      const nodeCenterX = nodeRect.left + nodeRect.width / 2;
+      const nodeCenterY = nodeRect.top + nodeRect.height / 2;
       
-      // Vector from element center to snapped mouse position (canvas coordinates)
-      let dx = snap.left - elCenterX;
-      let dy = snap.top - elCenterY;
+      // Vector from node's center to mouse
+      const dxMouse = e.clientX - nodeCenterX;
+      const dyMouse = e.clientY - nodeCenterY;
       
-      // Unrotate this vector by the negative element rotation
+      // Unrotate by negative element rotation to get into node's local coordinate system
       const rotationRad = ((el.rotation || 0) * Math.PI) / 180;
-      const unrotatedDx = dx * Math.cos(-rotationRad) - dy * Math.sin(-rotationRad);
-      const unrotatedDy = dx * Math.sin(-rotationRad) + dy * Math.cos(-rotationRad);
+      const unrotatedDx = dxMouse * Math.cos(-rotationRad) - dyMouse * Math.sin(-rotationRad);
+      const unrotatedDy = dxMouse * Math.sin(-rotationRad) + dyMouse * Math.cos(-rotationRad);
       
-      // Now convert this unrotated position relative to element's top-left corner
+      // Now convert to element's local coordinates (0,0 is top-left of element's bounding box)
       const elRelX = unrotatedDx + el.width / 2;
       const elRelY = unrotatedDy + el.height / 2;
-
+      
+      // Then also add snap
+      const canvasWrap = document.getElementById('canvasWrap');
+      const canvasRect = canvas.getBoundingClientRect();
+      const canvasMouseX = e.clientX - canvasRect.left + canvasWrap.scrollLeft;
+      const canvasMouseY = e.clientY - canvasRect.top + canvasWrap.scrollTop;
+      const snap = computeSnapVertex(el.id, canvasMouseX, canvasMouseY);
+      
+      // Now let's calculate the snap position in local coordinates too, but let's use the mouse position for now
       const newNorm = pixelToNorm(elRelX, elRelY, el.width, el.height);
       m.vertices[draggingVertexIndex] = newNorm;
 
@@ -1729,19 +1730,37 @@ function makeDraggable(node, handles, rotateHandle, el) {
       el.rotation = startRotation + deltaDeg;
       node.style.transform = `rotate(${el.rotation}deg)`;
       
-      // Handle group children rotation: keep them stationary relative to group
+      // Handle group children rotation: rotate them around group center
       if (el.type === 'group' && groupChildInitialPositions.length > 0) {
-        groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height, rotation, dx, dy }) => {
+        const deltaRad = (deltaDeg * Math.PI) / 180;
+        const originalGroupCenterX = ox + ow / 2;
+        const originalGroupCenterY = oy + oh / 2;
+        
+        groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height, rotation }) => {
           const child = elements[childId];
           if (child) {
             const childNode = document.getElementById('node_' + childId);
             if (childNode) {
-              // Keep child's rotation unchanged relative to group: maintain original position
-              child.left = el.left + relLeft;
-              child.top = el.top + relTop;
+              // Original child center relative to original group center
+              const originalChildCenterX = ox + relLeft + width / 2;
+              const originalChildCenterY = oy + relTop + height / 2;
+              const dxOrig = originalChildCenterX - originalGroupCenterX;
+              const dyOrig = originalChildCenterY - originalGroupCenterY;
+              
+              // Rotate this vector by deltaDeg
+              const dxNew = dxOrig * Math.cos(deltaRad) - dyOrig * Math.sin(deltaRad);
+              const dyNew = dxOrig * Math.sin(deltaRad) + dyOrig * Math.cos(deltaRad);
+              
+              // New child center
+              const newChildCenterX = groupCenterX + dxNew;
+              const newChildCenterY = groupCenterY + dyNew;
+              
+              // Calculate new left and top
+              child.left = newChildCenterX - width / 2;
+              child.top = newChildCenterY - height / 2;
               child.width = width;
               child.height = height;
-              child.rotation = rotation;
+              child.rotation = rotation + deltaDeg;
               
               childNode.style.left = child.left + 'px';
               childNode.style.top = child.top + 'px';
