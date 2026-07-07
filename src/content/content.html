@@ -149,7 +149,7 @@
     border-color: var(--emerald);
     background: var(--emerald-soft);
   }
-  
+
   /* Icon Preview Button */
   .icon-preview-btn {
     width: 100%;
@@ -163,17 +163,17 @@
     justify-content: center;
     transition: all 0.12s ease;
   }
-  
+
   .icon-preview-btn:hover {
     border-color: var(--emerald);
     background: var(--emerald-soft);
   }
-  
+
   .icon-preview-btn i {
     width: 40px !important;
     height: 40px !important;
   }
-  
+
   /* Icon Picker Modal */
   .icon-picker-modal-overlay {
     position: fixed;
@@ -187,7 +187,7 @@
     justify-content: center;
     z-index: 9999;
   }
-  
+
   .icon-picker-modal {
     background: #fff;
     border-radius: 12px;
@@ -199,14 +199,14 @@
     flex-direction: column;
     box-shadow: 0 20px 48px -12px rgba(0,0,0,0.28);
   }
-  
+
   .icon-picker-modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
   }
-  
+
   .icon-picker-modal-header h3 {
     margin: 0;
     font-size: 16px;
@@ -214,7 +214,7 @@
     font-family: 'Space Grotesk', sans-serif;
     color: var(--ink);
   }
-  
+
   .icon-picker-modal-close {
     width: 28px;
     height: 28px;
@@ -228,12 +228,12 @@
     align-items: center;
     justify-content: center;
   }
-  
+
   .icon-picker-modal-close:hover {
     background: rgba(0,0,0,0.1);
     color: var(--text);
   }
-  
+
   .icon-picker-modal-search {
     width: 100%;
     padding: 8px 12px;
@@ -243,13 +243,13 @@
     margin-bottom: 16px;
     font-family: 'Inter', sans-serif;
   }
-  
+
   .icon-picker-modal-search:focus {
     outline: none;
     border-color: var(--emerald);
     box-shadow: 0 0 0 3px var(--emerald-soft);
   }
-  
+
   .icon-picker-modal-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -258,7 +258,7 @@
     max-height: 50vh;
     padding-right: 4px;
   }
-  
+
   .icon-picker-modal-item {
     display: flex;
     align-items: center;
@@ -270,32 +270,32 @@
     transition: all 0.12s ease;
     aspect-ratio: 1;
   }
-  
+
   .icon-picker-modal-item:hover {
     border-color: var(--emerald);
     background: var(--emerald-soft);
   }
-  
+
   .icon-picker-modal-item.active {
     border-color: var(--emerald);
     background: var(--emerald-soft);
   }
-  
+
   /* Chart Picker Styles */
   .chart-picker-view {
     display: none;
   }
-  
+
   .chart-picker-view.active {
     display: block;
   }
-  
+
   .chart-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
-  
+
   .chart-chip {
     display: flex;
     flex-direction: column;
@@ -309,22 +309,22 @@
     user-select: none;
     transition: all 0.12s ease;
   }
-  
+
   .chart-chip:hover {
     background: rgba(30,127,92,0.16);
     border-color: rgba(30,127,92,0.4);
   }
-  
+
   .chart-chip svg {
     color: rgba(255,255,255,0.75);
     width: 24px;
     height: 24px;
   }
-  
+
   .chart-chip:hover svg {
     color: var(--emerald);
   }
-  
+
   .chart-chip-label {
     font-size: 10.5px;
     font-weight: 600;
@@ -332,13 +332,13 @@
     text-align: center;
     line-height: 1.2;
   }
-  
+
   .view-toggle {
     display: flex;
     gap: 3px;
     padding: 0 6px 8px 6px;
   }
-  
+
   .view-toggle-btn {
     flex: 1;
     min-width: 0;
@@ -356,12 +356,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  
+
   .view-toggle-btn.active {
     background: var(--emerald);
     color: #fff;
   }
-  
+
   .view-toggle-btn:hover:not(.active) {
     background: rgba(30,127,92,0.16);
   }
@@ -480,7 +480,7 @@
           <button class="view-toggle-btn" id="chartsViewBtn" onclick="switchToChartsView()">Charts</button>
           <button class="view-toggle-btn" id="layersViewBtn" onclick="switchToLayersView()">Layers</button>
         </div>
-        
+
         <!-- Elements View -->
         <div id="elementsView" class="chart-picker-view active">
           <div class="group-label" style="padding-top:0;">Visual</div>
@@ -509,7 +509,7 @@
             <div class="element-chip" onclick="addElement('upload')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="3" y="15" width="18" height="6" rx="1"/></svg><span class="element-chip-label">Upload</span></div>
           </div>
         </div>
-        
+
         <!-- Charts View -->
         <div id="chartsView" class="chart-picker-view">
           <div class="group-label" style="padding-top:0;">Chart Types</div>
@@ -612,12 +612,12 @@ function renderLayersList(){
   const allElements = Object.values(elements)
     .map(el => ({ el, z: el.z || 0 }))
     .sort((a,b) => b.z - a.z);
-  
+
   if (!allElements.length){
     listEl.innerHTML = '<div class="layers-empty">No elements yet. Add one from the Elements tab and it\'ll show up here.</div>';
     return;
   }
-  
+
   // Collect all child IDs
   const allChildIds = new Set();
   allElements.forEach(({ el }) => {
@@ -625,7 +625,7 @@ function renderLayersList(){
       el.meta.children.forEach(id => allChildIds.add(id));
     }
   });
-  
+
   // Recursive function to render a layer row and its children
   function renderLayer(item, depth = 0) {
     const el = item.el;
@@ -635,7 +635,7 @@ function renderLayersList(){
         <span class="layer-name" data-layer-name="${el.id}">${escapeHtml(el.name || OverlayElements.TYPE_LABELS[el.type])}</span>
       </div>
     `;
-    
+
     // Render children if it's a group
     if (el.type === 'group' && el.meta && el.meta.children) {
       el.meta.children.forEach(childId => {
@@ -645,14 +645,14 @@ function renderLayersList(){
         }
       });
     }
-    
+
     return html;
   }
-  
+
   // Render only top-level elements (not in any group's children)
   const topLevelItems = allElements.filter(({ el }) => !allChildIds.has(el.id));
   listEl.innerHTML = topLevelItems.map(item => renderLayer(item)).join('');
-  
+
   // Add event listeners to all layer rows
   listEl.querySelectorAll('.layer-row').forEach(row => {
     const id = row.dataset.layerId;
@@ -689,14 +689,14 @@ function startRenameLayer(id, span){
 function populateChartGrid() {
   const chartGrid = document.getElementById('chartGrid');
   if (!window.OverlayElements || !window.OverlayElements.CHART_TYPES) return;
-  
+
   chartGrid.innerHTML = window.OverlayElements.CHART_TYPES.map(chart => `
     <div class="chart-chip" onclick="addChartElement('${chart.id}')">
       <i data-lucide="${chart.icon}"></i>
       <span class="chart-chip-label">${chart.label}</span>
     </div>
   `).join('');
-  
+
   if (window.lucide) {
     window.lucide.createIcons();
   }
@@ -920,7 +920,7 @@ function setViewMode(isView){
   const btn = document.getElementById('editToggleBtn');
   if (btn) btn.textContent = isView ? 'Edit' : 'View';
   if (isView) closePanel();
-  
+
   // Hide all special handles in view mode
   if (isView) {
     document.querySelectorAll('.dash-el').forEach(n=>hideSpecialHandles(n));
@@ -1042,7 +1042,7 @@ function openColorPicker(anchor, initialHex, onChange, onCommit){
   let popLeft = rect.left;
   if (popLeft + 236 > window.innerWidth) popLeft = window.innerWidth - 244;
   pop.style.left = Math.max(6, popLeft) + 'px';
-  
+
   const popHeight = 220; // estimated height of the popover
   if (rect.bottom + 8 + popHeight > window.innerHeight) {
     // Place above the anchor
@@ -1235,12 +1235,12 @@ function renderElement(el) {
     node.appendChild(handle);
     handles.push(handle);
   });
-  
+
   // Add rotation handle
   const rotateHandle = document.createElement('div');
   rotateHandle.className = 'rotate-handle';
   node.appendChild(rotateHandle);
-  
+
   node.classList.add('dash-el');
 
   // If it's a special shape, add vertex handles and edge add buttons
@@ -1249,15 +1249,15 @@ function renderElement(el) {
   }
 
   canvas.appendChild(node);
-  
+
   // Ensure overflow: visible so handles don't get clipped
   node.style.overflow = 'visible';
-  
+
   // Apply rotation (in case buildNode didn't apply it properly)
   if (el.rotation) {
     node.style.transform = `rotate(${el.rotation}deg)`;
   }
-  
+
   // Render Lucide icon after node is added to DOM
   if (el.type === 'icon' && window.lucide) {
     window.lucide.createIcons();
@@ -1454,27 +1454,27 @@ function setupSpecialShape(node, el) {
       const nodeRect = node.getBoundingClientRect();
       const nodeCenterX = nodeRect.left + nodeRect.width / 2;
       const nodeCenterY = nodeRect.top + nodeRect.height / 2;
-      
+
       // Vector from node's center to mouse
       const dxMouse = e.clientX - nodeCenterX;
       const dyMouse = e.clientY - nodeCenterY;
-      
+
       // Unrotate by negative element rotation to get into node's local coordinate system
       const rotationRad = ((el.rotation || 0) * Math.PI) / 180;
       const unrotatedDx = dxMouse * Math.cos(-rotationRad) - dyMouse * Math.sin(-rotationRad);
       const unrotatedDy = dxMouse * Math.sin(-rotationRad) + dyMouse * Math.cos(-rotationRad);
-      
+
       // Now convert to element's local coordinates (0,0 is top-left of element's bounding box)
       const elRelX = unrotatedDx + el.width / 2;
       const elRelY = unrotatedDy + el.height / 2;
-      
+
       // Then also add snap
       const canvasWrap = document.getElementById('canvasWrap');
       const canvasRect = canvas.getBoundingClientRect();
       const canvasMouseX = e.clientX - canvasRect.left + canvasWrap.scrollLeft;
       const canvasMouseY = e.clientY - canvasRect.top + canvasWrap.scrollTop;
       const snap = computeSnapVertex(el.id, canvasMouseX, canvasMouseY);
-      
+
       // Now let's calculate the snap position in local coordinates too, but let's use the mouse position for now
       const newNorm = pixelToNorm(elRelX, elRelY, el.width, el.height);
       m.vertices[draggingVertexIndex] = newNorm;
@@ -1535,25 +1535,25 @@ function redrawElement(el) {
 function makeDraggable(node, handles, rotateHandle, el) {
   let dragging=false, resizing=false, rotating=false, sx=0, sy=0, ox=0, oy=0, ow=0, oh=0, resizeHandleType=null, startRotation=0;
   let groupChildInitialPositions = []; // For storing initial child positions when dragging or resizing group
-  
+
   node.addEventListener('mousedown', (e)=>{
     if (e.button !== 0) return; // ignore right-click, handled by contextmenu
     const isResizeHandle = e.target.classList.contains('resize-handle');
     const isVertexHandle = e.target.classList.contains('vertex-handle');
     const isEdgeAddHandle = e.target.classList.contains('edge-add-handle');
     const isRotateHandle = e.target.classList.contains('rotate-handle');
-    
+
     // Store initial child positions and rotation info for groups on any interaction
     if (el.type === 'group' && el.meta && el.meta.children) {
       const groupCenterX = el.left + el.width / 2;
       const groupCenterY = el.top + el.height / 2;
-      
+
       groupChildInitialPositions = el.meta.children.map(childId => {
         const child = elements[childId];
         if (child) {
           const childCenterX = child.left + child.width / 2;
           const childCenterY = child.top + child.height / 2;
-          
+
           return {
             id: childId,
             relLeft: child.left - el.left,
@@ -1569,7 +1569,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
         return null;
       }).filter(Boolean);
     }
-    
+
     if (isResizeHandle) {
       resizing = true;
       resizeHandleType = e.target.dataset.handleType;
@@ -1593,7 +1593,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
     dragging = true;
     sx=e.clientX; sy=e.clientY;
     ox=el.left; oy=el.top;
-    
+
     e.preventDefault();
   });
   document.addEventListener('mousemove', (e)=>{
@@ -1605,7 +1605,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
       node.style.left = el.left + 'px';
       node.style.top = el.top + 'px';
       showGuides(snap);
-      
+
       // Handle group children dragging using stored relative positions
       if (el.type === 'group' && groupChildInitialPositions.length > 0) {
         groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height }) => {
@@ -1625,7 +1625,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
           }
         });
       }
-      
+
       // Check for group hover (visual feedback)
       if (el.type !== 'group') {
         Object.values(elements).forEach(groupEl => {
@@ -1633,7 +1633,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
             const groupNode = document.getElementById('node_' + groupEl.id);
             if (groupNode) {
               const isTouching = isElementsIntersecting(el, groupEl);
-              
+
               if (isTouching) {
                 // Ensure we have a visible border for feedback
                 groupNode.style.borderStyle = 'solid';
@@ -1701,7 +1701,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
       node.style.width = el.width + 'px';
       node.style.height = el.height + 'px';
       showGuides(snap);
-      
+
       // Handle group children resizing: keep them stationary relative to group
       if (el.type === 'group' && groupChildInitialPositions.length > 0) {
         groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height }) => {
@@ -1730,13 +1730,13 @@ function makeDraggable(node, handles, rotateHandle, el) {
       const deltaDeg = ((currentAngle - startAngle) * 180) / Math.PI;
       el.rotation = startRotation + deltaDeg;
       node.style.transform = `rotate(${el.rotation}deg)`;
-      
+
       // Handle group children rotation: rotate them around group center
       if (el.type === 'group' && groupChildInitialPositions.length > 0) {
         const deltaRad = (deltaDeg * Math.PI) / 180;
         const originalGroupCenterX = ox + ow / 2;
         const originalGroupCenterY = oy + oh / 2;
-        
+
         groupChildInitialPositions.forEach(({ id: childId, relLeft, relTop, width, height, rotation }) => {
           const child = elements[childId];
           if (child) {
@@ -1747,22 +1747,22 @@ function makeDraggable(node, handles, rotateHandle, el) {
               const originalChildCenterY = oy + relTop + height / 2;
               const dxOrig = originalChildCenterX - originalGroupCenterX;
               const dyOrig = originalChildCenterY - originalGroupCenterY;
-              
+
               // Rotate this vector by deltaDeg
               const dxNew = dxOrig * Math.cos(deltaRad) - dyOrig * Math.sin(deltaRad);
               const dyNew = dxOrig * Math.sin(deltaRad) + dyOrig * Math.cos(deltaRad);
-              
+
               // New child center
               const newChildCenterX = groupCenterX + dxNew;
               const newChildCenterY = groupCenterY + dyNew;
-              
+
               // Calculate new left and top
               child.left = newChildCenterX - width / 2;
               child.top = newChildCenterY - height / 2;
               child.width = width;
               child.height = height;
               child.rotation = rotation + deltaDeg;
-              
+
               childNode.style.left = child.left + 'px';
               childNode.style.top = child.top + 'px';
               childNode.style.width = child.width + 'px';
@@ -1811,7 +1811,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
                   oldGroup.meta.children = oldGroup.meta.children.filter(cid => cid !== el.id);
                 }
               });
-              
+
               // Add to new group
               if (!groupEl.meta) groupEl.meta = {};
               if (!groupEl.meta.children) groupEl.meta.children = [];
@@ -1841,12 +1841,12 @@ function isElementInsideElement(childEl, parentEl) {
   const childTop = childEl.top;
   const childRight = childLeft + childEl.width;
   const childBottom = childTop + childEl.height;
-  
+
   const parentLeft = parentEl.left;
   const parentTop = parentEl.top;
   const parentRight = parentLeft + parentEl.width;
   const parentBottom = parentTop + parentEl.height;
-  
+
   return childLeft >= parentLeft && childTop >= parentTop && 
          childRight <= parentRight && childBottom <= parentBottom;
 }
@@ -1856,12 +1856,12 @@ function isElementsIntersecting(el1, el2) {
   const el1Top = el1.top;
   const el1Right = el1Left + el1.width;
   const el1Bottom = el1Top + el1.height;
-  
+
   const el2Left = el2.left;
   const el2Top = el2.top;
   const el2Right = el2Left + el2.width;
   const el2Bottom = el2Top + el2.height;
-  
+
   return !(el1Right < el2Left || el1Left > el2Right || 
            el1Bottom < el2Top || el1Top > el2Bottom);
 }
@@ -2448,7 +2448,7 @@ function renderTab(tab, id) {
     const borderStyles = ['none','solid','dashed','dotted'];
     const shadowStyleOptions = ['none','small','medium','large'];
     const backgroundStyleOptions = ['none','flat','gradient'];
-    
+
     function renderGroupPanel() {
       body.innerHTML = `
         <div class="field">
@@ -2555,7 +2555,7 @@ function renderTab(tab, id) {
         <div class="divider"></div>
         <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
       `;
-      
+
       // Add color picker event listeners
       if (m.backgroundStyle === 'flat') {
         const bgBtn = document.getElementById('groupBgColorSwatchBtn');
@@ -2573,7 +2573,7 @@ function renderTab(tab, id) {
           });
         }
       }
-      
+
       if (m.backgroundStyle === 'gradient') {
         const startBtn = document.getElementById('gradientStartSwatchBtn');
         if (startBtn) {
@@ -2588,7 +2588,7 @@ function renderTab(tab, id) {
             );
           });
         }
-        
+
         const endBtn = document.getElementById('gradientEndSwatchBtn');
         if (endBtn) {
           endBtn.addEventListener('click', function(){
@@ -2603,7 +2603,7 @@ function renderTab(tab, id) {
           });
         }
       }
-      
+
       if (m.defineBordersIndependently) {
         ['top','right','bottom','left'].forEach(side => {
           const btn = document.getElementById(`border${side}ColorSwatchBtn`);
@@ -2637,7 +2637,7 @@ function renderTab(tab, id) {
         }
       }
     }
-    
+
     renderGroupPanel();
   } else if (tab === 'appearance' && el.type === 'graph') {
     const m = el.meta || {};
@@ -2674,13 +2674,17 @@ function renderTab(tab, id) {
       <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
     `;
   } else if (tab === 'data') {
-    body.innerHTML = `
-      <div class="field">
-        <div class="field-label">Cell range binding <span style="color:var(--text-faint);font-weight:400;">optional</span></div>
-        <input class="field-input mono" value="${el.binding||''}" placeholder="e.g. Sheet1!B2:E10" oninput="updateBinding('${id}', this.value)" onblur="pushHistory()">
-      </div>
-      <div class="hint" style="font-size:10px;color:var(--text-faint);margin-top:6px;line-height:1.5;">Live data pulled from this range isn't wired up yet — this just records which range the element is meant to represent.</div>
-    `;
+    if (el.type === 'graph' && (el.meta || {}).chartType === 'column') {
+      renderColumnChartDataTab(id, el, body);
+    } else {
+      body.innerHTML = `
+        <div class="field">
+          <div class="field-label">Cell range binding <span style="color:var(--text-faint);font-weight:400;">optional</span></div>
+          <input class="field-input mono" value="${el.binding||''}" placeholder="e.g. Sheet1!B2:E10" oninput="updateBinding('${id}', this.value)" onblur="pushHistory()">
+        </div>
+        <div class="hint" style="font-size:10px;color:var(--text-faint);margin-top:6px;line-height:1.5;">Live data pulled from this range isn't wired up yet — this just records which range the element is meant to represent.</div>
+      `;
+    }
   } else if (tab === 'layout') {
     body.innerHTML = `
       <div class="field-row">
@@ -2697,6 +2701,159 @@ function renderTab(tab, id) {
 
 function updateLabel(id, v){ elements[id].label = v; redrawElement(elements[id]); }
 function updateBinding(id, v){ elements[id].binding = v; }
+
+// ---- Column chart data helpers ----
+const COLUMN_SERIES_COLORS = ['#1E7F5C','#E8A33D','#3B82F6','#D2534A','#8B5CF6','#EC4899','#F59E0B','#06B6D4'];
+
+function getColumnData(id) {
+  const el = elements[id];
+  if (!el.meta) el.meta = {};
+  if (!el.meta.columnData) el.meta.columnData = { xAxisRange: '', xLabels: [], series: [] };
+  return el.meta.columnData;
+}
+
+function renderColumnChartDataTab(id, el, body) {
+  const cd = getColumnData(id);
+  const series = cd.series || [];
+  const xPrev = cd.xLabels && cd.xLabels.length > 0
+    ? `<div style="font-size:9px;color:var(--text-faint);margin-top:4px;line-height:1.5;">${cd.xLabels.slice(0,8).map(l=>escapeHtml(String(l))).join(' · ')}${cd.xLabels.length>8?' · +'+(cd.xLabels.length-8)+' more':''}</div>`
+    : '';
+
+  const seriesHTML = series.map((s, i) => {
+    const color = s.color || COLUMN_SERIES_COLORS[i % COLUMN_SERIES_COLORS.length];
+    const valInfo = s.values && s.values.length > 0
+      ? `<div style="font-size:9px;color:var(--text-faint);margin-top:3px;">${s.values.length} value${s.values.length!==1?'s':''} captured</div>`
+      : '';
+    return `
+      <div style="background:rgba(0,0,0,0.035);border-radius:8px;padding:8px;margin-bottom:6px;">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+          <div style="width:14px;height:14px;border-radius:3px;background:${color};flex-shrink:0;cursor:pointer;border:1px solid rgba(0,0,0,0.1);"
+               onclick="cycleColumnSeriesColor('${id}',${i})" title="Click to change color"></div>
+          <input class="field-input" style="flex:1;font-size:11px;" value="${escapeHtml(s.name||'')}"
+                 placeholder="Series name"
+                 oninput="setColumnSeriesName('${id}',${i},this.value)" onblur="pushHistory()">
+          <button onclick="removeColumnSeries('${id}',${i})"
+                  style="background:rgba(210,83,74,0.12);color:#D2534A;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;">✕</button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="field-input mono" style="flex:1;font-size:10px;" readonly
+                 value="${escapeHtml(s.range||'')}" placeholder="Select range in Excel…">
+          <button onclick="captureColumnSeries('${id}',${i})"
+                  style="background:#1E7F5C;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Capture</button>
+        </div>
+        ${valInfo}
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="field">
+      <div class="field-label">X Axis <span style="color:var(--text-faint);font-weight:400;">categories</span></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+        <input class="field-input mono" style="flex:1;font-size:10px;" readonly
+               value="${escapeHtml(cd.xAxisRange||'')}" placeholder="Select range in Excel…">
+        <button onclick="captureColumnXAxis('${id}')"
+                style="background:#1E7F5C;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">Capture</button>
+      </div>
+      ${xPrev}
+    </div>
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;margin-bottom:8px;">
+      <div class="field-label" style="margin:0;">Data Series</div>
+    </div>
+    ${seriesHTML}
+    <button onclick="addColumnSeries('${id}')"
+            style="width:100%;background:rgba(30,127,92,0.08);color:#1E7F5C;border:1.5px dashed rgba(30,127,92,0.4);border-radius:8px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;margin-bottom:8px;">
+      + Add series
+    </button>
+    <div class="divider"></div>
+    <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+  `;
+}
+
+async function captureColumnXAxis(id) {
+  const el = elements[id];
+  const cd = getColumnData(id);
+  try {
+    await Excel.run(async (context) => {
+      const range = context.workbook.getSelectedRange();
+      range.load('address,values');
+      await context.sync();
+      cd.xAxisRange = range.address;
+      // Flatten values — support a single row or column
+      const flat = range.values.flat().filter(v => v !== '' && v !== null && v !== undefined);
+      cd.xLabels = flat;
+      redrawElement(el);
+      renderTab('data', id);
+      pushHistory();
+    });
+  } catch(e) {
+    // Not running in Excel or no selection
+    alert('Select a range of category labels in your workbook, then click Capture.');
+  }
+}
+
+async function captureColumnSeries(id, seriesIndex) {
+  const el = elements[id];
+  const cd = getColumnData(id);
+  if (!cd.series[seriesIndex]) return;
+  try {
+    await Excel.run(async (context) => {
+      const range = context.workbook.getSelectedRange();
+      range.load('address,values');
+      await context.sync();
+      cd.series[seriesIndex].range = range.address;
+      const flat = range.values.flat()
+        .map(v => typeof v === 'number' ? v : parseFloat(v))
+        .filter(v => !isNaN(v));
+      cd.series[seriesIndex].values = flat;
+      redrawElement(el);
+      renderTab('data', id);
+      pushHistory();
+    });
+  } catch(e) {
+    alert('Select a range of numeric values in your workbook, then click Capture.');
+  }
+}
+
+function addColumnSeries(id) {
+  const el = elements[id];
+  const cd = getColumnData(id);
+  const i = cd.series.length;
+  cd.series.push({
+    name: 'Series ' + (i + 1),
+    range: '',
+    values: [],
+    color: COLUMN_SERIES_COLORS[i % COLUMN_SERIES_COLORS.length]
+  });
+  renderTab('data', id);
+  pushHistory();
+}
+
+function removeColumnSeries(id, i) {
+  const el = elements[id];
+  const cd = getColumnData(id);
+  cd.series.splice(i, 1);
+  redrawElement(el);
+  renderTab('data', id);
+  pushHistory();
+}
+
+function setColumnSeriesName(id, i, value) {
+  const cd = getColumnData(id);
+  if (cd.series[i]) cd.series[i].name = value;
+}
+
+function cycleColumnSeriesColor(id, i) {
+  const el = elements[id];
+  const cd = getColumnData(id);
+  if (!cd.series[i]) return;
+  const cur = cd.series[i].color || COLUMN_SERIES_COLORS[i % COLUMN_SERIES_COLORS.length];
+  const idx = COLUMN_SERIES_COLORS.indexOf(cur);
+  cd.series[i].color = COLUMN_SERIES_COLORS[(idx + 1) % COLUMN_SERIES_COLORS.length];
+  redrawElement(el);
+  renderTab('data', id);
+  pushHistory();
+}
 function liveSetFill(id, hex){ elements[id].fill = hex; redrawElement(elements[id]); }
 function liveSetBg(id, hex){ if (!elements[id].meta) elements[id].meta = {}; elements[id].meta.bg = hex; redrawElement(elements[id]); }
 function commitColorChange(id){ pushHistory(); if (panelEl) renderTab('appearance', id); }
@@ -2727,11 +2884,11 @@ function openIconPicker(id) {
   const el = elements[id];
   const m = el.meta || {};
   let iconList = window.OverlayElements && window.OverlayElements.ICONS ? window.OverlayElements.ICONS : ['zap', 'home', 'user'];
-  
+
   // Remove known invalid icons
   const invalidIcons = ['pulse', 'cash', 'equals', 'not-equals', 'greater-than', 'less-than', 'stop', 'sync', 'fire', 'user-unlock', 'screwdriver', 'printer-off', 'shield-heart', 'shield-star'];
   iconList = iconList.filter(icon => !invalidIcons.includes(icon));
-  
+
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'icon-picker-modal-overlay';
   modalOverlay.id = 'iconPickerModal';
@@ -2751,16 +2908,16 @@ function openIconPicker(id) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modalOverlay);
   modalOverlay.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeIconPicker();
   });
-  
+
   if (window.lucide) {
     window.lucide.createIcons();
   }
-  
+
   document.getElementById('iconSearch').focus();
 }
 function filterIcons() {
@@ -2770,7 +2927,7 @@ function filterIcons() {
   // Remove known invalid icons
   const invalidIcons = ['pulse', 'cash', 'equals', 'not-equals', 'greater-than', 'less-than', 'stop', 'sync', 'fire', 'user-unlock', 'screwdriver', 'printer-off', 'shield-heart', 'shield-star'];
   iconList = iconList.filter(icon => !invalidIcons.includes(icon));
-  
+
   items.forEach((item, index) => {
     const iconName = iconList[index];
     if (iconName && iconName.toLowerCase().includes(searchText)) {
@@ -2782,7 +2939,7 @@ function filterIcons() {
 }
 function selectIcon(iconName) {
   if (!currentIconPickerId) return;
-  
+
   if (!elements[currentIconPickerId].meta) elements[currentIconPickerId].meta = {};
   elements[currentIconPickerId].meta.iconName = iconName;
   redrawElement(elements[currentIconPickerId]);
