@@ -288,8 +288,7 @@ window.OverlayElements = (function () {
             }
           });
 
-          const _safeTitle = svgEsc(title || 'Column Chart');
-          return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:4px;">${_safeTitle}</div><svg width="100%" height="100%" viewBox="0 0 ${_SW} ${_SH}" preserveAspectRatio="none">${_s}</svg>`;
+          return `<svg width="100%" height="100%" viewBox="0 0 ${_SW} ${_SH}" preserveAspectRatio="none">${_s}</svg>`;
         }
         chartContent = `
           <rect x="20" y="50" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.9"/>
