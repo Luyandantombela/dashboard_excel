@@ -5,6 +5,8 @@
 
 window.OverlayElements = (function () {
 
+  function svgEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
   const SYSTEM_FONTS = new Set(['Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma','Trebuchet MS']);
   const loadedFonts = new Set(['Inter','Space Grotesk','JetBrains Mono']); // already linked in <head> by both surfaces
   function ensureFontLoaded(font){
@@ -135,7 +137,7 @@ window.OverlayElements = (function () {
     'shield-off', 'shield-alert'
   ];
 
-  function chartSVG(title, chartType = 'line') {
+  function chartSVG(title, chartType = 'line', meta) {
     let chartContent = '';
     switch (chartType) {
       case 'area':
@@ -159,7 +161,44 @@ window.OverlayElements = (function () {
           <path d="M130,55 L170,95 A40,40 0 0,1 90,95 Z" fill="#3B82F6"/>
         `;
         break;
-      case 'column':
+      case 'column': {
+        const _cd = meta && meta.columnData;
+        const _xLabels = (_cd && _cd.xLabels && _cd.xLabels.length > 0) ? _cd.xLabels : [];
+        const _series = (_cd && _cd.series) ? _cd.series.filter(s => s.values && s.values.length > 0) : [];
+        if (_xLabels.length > 0 && _series.length > 0) {
+          const _COLORS = ['#1E7F5C','#E8A33D','#3B82F6','#D2534A','#8B5CF6','#EC4899'];
+          const _n = _xLabels.length, _nS = _series.length;
+          let _max = 0;
+          _series.forEach(s => s.values.forEach(v => { if (typeof v === 'number' && v > _max) _max = v; }));
+          if (_max <= 0) _max = 1;
+          const _L = 38, _R = 8, _T = 12, _B = 26, _SW = 280, _SH = 130;
+          const _cW = _SW - _L - _R, _cH = _SH - _T - _B, _cBot = _SH - _B;
+          const _catW = _cW / _n;
+          const _pad = _catW * 0.12;
+          const _bW = Math.max(2, (_catW - _pad * 2) / _nS - 1);
+          let _s = '';
+          [0, 0.5, 1].forEach(f => {
+            const _y = (_cBot - f * _cH).toFixed(1);
+            _s += `<line x1="${_L}" y1="${_y}" x2="${_SW-_R}" y2="${_y}" stroke="#E4E7EB" stroke-width="0.5"/>`;
+            _s += `<text x="${_L-3}" y="${(+_y+3).toFixed(1)}" font-size="7" fill="#9AA2AC" text-anchor="end">${Math.round(_max*f)}</text>`;
+          });
+          _s += `<line x1="${_L}" y1="${_cBot}" x2="${_SW-_R}" y2="${_cBot}" stroke="#C8CDD4" stroke-width="0.8"/>`;
+          _xLabels.forEach((lbl, i) => {
+            const _gx = _L + i * _catW + _pad;
+            _series.forEach((sr, j) => {
+              const _v = typeof sr.values[i] === 'number' ? sr.values[i] : 0;
+              const _bH = Math.max(0, (_v / _max) * _cH);
+              const _bX = (_gx + j * (_bW + 1)).toFixed(1);
+              const _bY = (_cBot - _bH).toFixed(1);
+              _s += `<rect x="${_bX}" y="${_bY}" width="${_bW.toFixed(1)}" height="${_bH.toFixed(1)}" fill="${sr.color||_COLORS[j%_COLORS.length]}" rx="1.5"/>`;
+            });
+            const _cx = (_L + (i + 0.5) * _catW).toFixed(1);
+            const _raw = String(lbl); const _lbl = svgEsc(_raw.length > 5 ? _raw.slice(0,4)+'…' : _raw);
+            _s += `<text x="${_cx}" y="${_cBot+11}" font-size="7" fill="#6B7480" text-anchor="middle">${_lbl}</text>`;
+          });
+          const _safeTitle = svgEsc(title||'Column Chart');
+          return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:4px;">${_safeTitle}</div><svg width="100%" height="100%" viewBox="0 0 ${_SW} ${_SH}" preserveAspectRatio="none">${_s}</svg>`;
+        }
         chartContent = `
           <rect x="20" y="50" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.9"/>
           <rect x="65" y="30" width="30" height="70" rx="3" fill="#1E7F5C" opacity="0.75"/>
@@ -168,6 +207,7 @@ window.OverlayElements = (function () {
           <rect x="200" y="45" width="30" height="55" rx="3" fill="#1E7F5C" opacity="0.8"/>
         `;
         break;
+      }
       case 'bar':
         chartContent = `
           <rect x="30" y="20" width="70" height="20" rx="3" fill="#1E7F5C" opacity="0.9"/>
@@ -463,7 +503,7 @@ window.OverlayElements = (function () {
       case 'graph':
         const chartMeta = el.meta || {};
         applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
-        node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line');
+        node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line', chartMeta);
         break;
       case 'group': {
         const m = el.meta || {};
