@@ -171,7 +171,6 @@ window.OverlayElements = (function () {
           const _uid = elId ? String(elId).replace(/[^a-z0-9]/gi,'') : 'ch';
 
           // style props
-          const _bgType  = _cs.bgType || 'none';
           const _barPct  = Math.min(100, Math.max(10, typeof _cs.barWidthPct === 'number' ? _cs.barWidthPct : 70)) / 100;
           const _gridClrRaw = _cs.gridColor === 'none' ? null : (_cs.gridColor || '#E4E7EB');
           const _gridClr    = _gridClrRaw ? svgEsc(_gridClrRaw) : null;
@@ -180,15 +179,24 @@ window.OverlayElements = (function () {
           const _xAngle  = typeof _cs.xAngle === 'number' ? _cs.xAngle : -90;
           const _yAngle  = typeof _cs.yAngle === 'number' ? _cs.yAngle : 0;
 
+          // corner radius (top and bottom independently)
+          const _rxT = typeof _cs.rxTop    === 'number' ? Math.max(0, _cs.rxTop)    : 2;
+          const _rxB = typeof _cs.rxBottom === 'number' ? Math.max(0, _cs.rxBottom) : 0;
+
           const _n = _xLabels.length, _nS = _series.length;
           let _max = 0;
           _series.forEach(s => s.values.forEach(v => { if (typeof v === 'number' && v > _max) _max = v; }));
           if (_max <= 0) _max = 1;
 
           // data label settings
-          const _dlShow = _cs.showDataLabels !== false;
-          const _dlClr  = svgEsc(_cs.dataLabelColor || '#374151');
-          const _dlSize = typeof _cs.dataLabelSize === 'number' ? _cs.dataLabelSize : 7;
+          const _dlShow  = _cs.showDataLabels !== false;
+          const _dlHover = _cs.dataLabelHover === true; // true = only on hover
+          const _dlClr   = svgEsc(_cs.dataLabelColor || '#374151');
+          const _dlSize  = typeof _cs.dataLabelSize === 'number' ? _cs.dataLabelSize : 7;
+
+          // CSS class names scoped to this chart instance (UID prevents cross-chart collisions)
+          const _grpClass = `bg${_uid}g`;
+          const _lblClass = `bg${_uid}l`;
 
           const _L = 40, _R = 8, _T = 12, _B = 58, _SW = 280, _SH = 150;
           const _cW = _SW - _L - _R, _cH = _SH - _T - _B, _cBot = _SH - _B;
@@ -198,12 +206,21 @@ window.OverlayElements = (function () {
           const _bW     = Math.max(2, _groupW / _nS - 1);
           const _fmtY   = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 10000 ? (v/1000).toFixed(0)+'k' : v >= 1000 ? (v/1000).toFixed(1)+'k' : String(Math.round(v));
 
-          // SVG defs
-          let _defs = '';
-          if (_bgType === 'gradient') {
-            const _gf = svgEsc(_cs.bgGradFrom || '#FFFFFF'), _gt2 = svgEsc(_cs.bgGradTo || '#E8F5F0');
-            _defs += `<linearGradient id="bg${_uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${_gf}"/><stop offset="100%" stop-color="${_gt2}"/></linearGradient>`;
+          // Helper: path with separate top / bottom corner radius
+          function _barPath(x, y, w, h, rT, rB) {
+            const rTc = Math.min(rT, w / 2, Math.max(0, h / 2));
+            const rBc = Math.min(rB, w / 2, Math.max(0, h / 2));
+            if (h <= 0) return '';
+            if (rTc === 0 && rBc === 0)
+              return `M${x},${y} L${x+w},${y} L${x+w},${y+h} L${x},${y+h} Z`;
+            return `M${x+rTc},${y} L${x+w-rTc},${y} Q${x+w},${y} ${x+w},${y+rTc} ` +
+                   `L${x+w},${y+h-rBc} Q${x+w},${y+h} ${x+w-rBc},${y+h} ` +
+                   `L${x+rBc},${y+h} Q${x},${y+h} ${x},${y+h-rBc} ` +
+                   `L${x},${y+rTc} Q${x},${y} ${x+rTc},${y} Z`;
           }
+
+          // SVG defs (only bar gradients; background is on the wrapper now)
+          let _defs = '';
           _series.forEach((sr, j) => {
             if (sr.colorType === 'gradient') {
               const _c1 = svgEsc(sr.color || _COLORS[j % _COLORS.length]), _c2 = svgEsc(sr.gradientTo || '#FFFFFF');
@@ -211,14 +228,13 @@ window.OverlayElements = (function () {
             }
           });
 
-          let _s = _defs ? `<defs>${_defs}</defs>` : '';
-
-          // background
-          if (_bgType === 'color') {
-            _s += `<rect x="0" y="0" width="${_SW}" height="${_SH}" fill="${svgEsc(_cs.bgColor||'#FFFFFF')}"/>`;
-          } else if (_bgType === 'gradient') {
-            _s += `<rect x="0" y="0" width="${_SW}" height="${_SH}" fill="url(#bg${_uid})"/>`;
+          // Hover-only data label CSS
+          let _styleBlock = '';
+          if (_dlShow && _dlHover) {
+            _styleBlock = `<style>.${_grpClass} .${_lblClass}{opacity:0;transition:opacity .15s}.${_grpClass}:hover .${_lblClass}{opacity:1}</style>`;
           }
+
+          let _s = _styleBlock + (_defs ? `<defs>${_defs}</defs>` : '');
 
           // grid lines + Y labels
           [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(f => {
@@ -238,19 +254,28 @@ window.OverlayElements = (function () {
             _series.forEach((sr, j) => {
               const _v    = typeof sr.values[i] === 'number' ? sr.values[i] : 0;
               const _bH   = Math.max(0, (_v / _max) * _cH);
-              const _bX   = (_gx + j * (_bW + 1)).toFixed(1);
-              const _bY   = (_cBot - _bH).toFixed(1);
+              const _bXn  = _gx + j * (_bW + 1);
+              const _bYn  = _cBot - _bH;
+              const _bX   = _bXn.toFixed(1);
+              const _bY   = _bYn.toFixed(1);
               const _fill = sr.colorType === 'gradient'
                 ? `url(#bar${_uid}${j})`
                 : svgEsc(sr.color || _COLORS[j % _COLORS.length]);
-              _s += `<rect x="${_bX}" y="${_bY}" width="${_bW.toFixed(1)}" height="${_bH.toFixed(1)}" fill="${_fill}" rx="1.5"/>`;
-              if (_dlShow && typeof _v === 'number') {
-                const _lx = (+_bX + _bW / 2).toFixed(1);
-                const _lyRaw = +_bY - 2.5;
-                // clamp so label stays inside the SVG viewBox (at least fontSize + top padding below top edge)
+              const _pd = _barPath(_bXn, _bYn, _bW, _bH, _rxT, _rxB);
+              const _barShape = _pd
+                ? `<path d="${_pd}" fill="${_fill}"/>`
+                : `<rect x="${_bX}" y="${_bY}" width="${_bW.toFixed(1)}" height="${_bH.toFixed(1)}" fill="${_fill}"/>`;
+
+              if (_dlShow) {
+                // Wrap bar + label in a group so hover CSS can target the label
+                const _lx = (_bXn + _bW / 2).toFixed(1);
+                const _lyRaw = _bYn - 2.5;
                 const _lyMin = _T + _dlSize;
                 const _ly = Math.max(_lyMin, _lyRaw).toFixed(1);
-                _s += `<text x="${_lx}" y="${_ly}" font-size="${_dlSize}" fill="${_dlClr}" font-family="${_lblFont}" text-anchor="middle" dominant-baseline="auto" font-weight="600">${svgEsc(_fmtY(_v))}</text>`;
+                const _lClass = _dlHover ? ` class="${_lblClass}"` : '';
+                _s += `<g class="${_grpClass}">${_barShape}<text${_lClass} x="${_lx}" y="${_ly}" font-size="${_dlSize}" fill="${_dlClr}" font-family="${_lblFont}" text-anchor="middle" dominant-baseline="auto" font-weight="600">${svgEsc(_fmtY(_v))}</text></g>`;
+              } else {
+                _s += _barShape;
               }
             });
             const _cx  = (_L + (i + 0.5) * _catW).toFixed(1);
@@ -567,11 +592,28 @@ window.OverlayElements = (function () {
         });
         node.textContent = el.label || 'Image';
         break;
-      case 'graph':
+      case 'graph': {
         const chartMeta = el.meta || {};
-        applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
+        // Dynamically resolve background for column charts so that None = fully transparent,
+        // flat color = that color, gradient = that gradient. Other chart types keep #fff.
+        let _graphBg = '#fff';
+        let _graphBorder = '1.5px solid #E4E7EB';
+        if ((chartMeta.chartType || 'line') === 'column') {
+          const _cs2 = (chartMeta.columnStyle) || {};
+          const _bt2 = _cs2.bgType || 'none';
+          if (_bt2 === 'none') {
+            _graphBg = 'transparent';
+            _graphBorder = 'none';
+          } else if (_bt2 === 'color') {
+            _graphBg = _cs2.bgColor || '#FFFFFF';
+          } else if (_bt2 === 'gradient') {
+            _graphBg = `linear-gradient(180deg, ${_cs2.bgGradFrom || '#FFFFFF'}, ${_cs2.bgGradTo || '#E8F5F0'})`;
+          }
+        }
+        applyStyle(node, { background: _graphBg, border: _graphBorder, flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
         node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line', chartMeta, el.id);
         break;
+      }
       case 'group': {
         const m = el.meta || {};
         
