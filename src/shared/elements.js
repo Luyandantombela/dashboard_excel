@@ -171,17 +171,16 @@ window.OverlayElements = (function () {
           const _uid = elId ? String(elId).replace(/[^a-z0-9]/gi,'') : 'ch';
 
           // style props
-          const _barPct  = Math.min(100, Math.max(10, typeof _cs.barWidthPct === 'number' ? _cs.barWidthPct : 70)) / 100;
-          const _gridClrRaw = _cs.gridColor === 'none' ? null : (_cs.gridColor || '#E4E7EB');
-          const _gridClr    = _gridClrRaw ? svgEsc(_gridClrRaw) : null;
-          const _lblClr  = svgEsc(_cs.labelColor || '#6B7480');
-          const _lblFont = svgEsc(_cs.labelFont   || 'sans-serif');
-          const _xAngle  = typeof _cs.xAngle === 'number' ? _cs.xAngle : -90;
-          const _yAngle  = typeof _cs.yAngle === 'number' ? _cs.yAngle : 0;
-
-          // corner radius (top and bottom independently)
-          const _rxT = typeof _cs.rxTop    === 'number' ? Math.max(0, _cs.rxTop)    : 2;
-          const _rxB = typeof _cs.rxBottom === 'number' ? Math.max(0, _cs.rxBottom) : 0;
+          const _barPct      = Math.min(100, Math.max(10, typeof _cs.barWidthPct === 'number' ? _cs.barWidthPct : 70)) / 100;
+          const _rxT         = typeof _cs.rxTop      === 'number' ? _cs.rxTop      : 2;
+          const _rxB         = typeof _cs.rxBottom   === 'number' ? _cs.rxBottom   : 0;
+          const _groupGapPct = typeof _cs.barGroupGap === 'number' ? _cs.barGroupGap : 100;
+          const _gridClrRaw  = _cs.gridColor === 'none' ? null : (_cs.gridColor || '#E4E7EB');
+          const _gridClr     = _gridClrRaw ? svgEsc(_gridClrRaw) : null;
+          const _lblClr      = svgEsc(_cs.labelColor || '#6B7480');
+          const _lblFont     = svgEsc(_cs.labelFont   || 'sans-serif');
+          const _xAngle      = typeof _cs.xAngle === 'number' ? _cs.xAngle : -90;
+          const _yAngle      = typeof _cs.yAngle === 'number' ? _cs.yAngle : 0;
 
           const _n = _xLabels.length, _nS = _series.length;
           let _max = 0;
@@ -190,105 +189,125 @@ window.OverlayElements = (function () {
 
           // data label settings
           const _dlShow  = _cs.showDataLabels !== false;
-          const _dlHover = _cs.dataLabelHover === true; // true = only on hover
+          const _dlHover = _cs.dataLabelHover === true;
           const _dlClr   = svgEsc(_cs.dataLabelColor || '#374151');
           const _dlSize  = typeof _cs.dataLabelSize === 'number' ? _cs.dataLabelSize : 7;
-
-          // CSS class names scoped to this chart instance (UID prevents cross-chart collisions)
-          const _grpClass = `bg${_uid}g`;
-          const _lblClass = `bg${_uid}l`;
 
           const _L = 40, _R = 8, _T = 12, _B = 58, _SW = 280, _SH = 150;
           const _cW = _SW - _L - _R, _cH = _SH - _T - _B, _cBot = _SH - _B;
           const _catW   = _cW / _n;
           const _groupW = _catW * _barPct;
-          const _pad    = (_catW - _groupW) / 2;
-          const _bW     = Math.max(2, _groupW / _nS - 1);
-          const _fmtY   = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 10000 ? (v/1000).toFixed(0)+'k' : v >= 1000 ? (v/1000).toFixed(1)+'k' : String(Math.round(v));
 
-          // Helper: path with separate top / bottom corner radius
-          function _barPath(x, y, w, h, rT, rB) {
-            const rTc = Math.min(rT, w / 2, Math.max(0, h / 2));
-            const rBc = Math.min(rB, w / 2, Math.max(0, h / 2));
+          // Bar width + per-group step (controls overlap vs separation)
+          const _bW       = Math.max(2, _groupW / _nS - 1);
+          const _stepFull = _bW + 1;
+          const _stepMin  = Math.min(3, _stepFull * 0.12);
+          const _step     = _stepMin + (_groupGapPct / 100) * (_stepFull - _stepMin);
+          const _totalGW  = _bW + Math.max(0, _nS - 1) * _step;
+          const _gPad     = (_catW - _totalGW) / 2;
+
+          const _fmtY = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 10000 ? (v/1000).toFixed(0)+'k' : v >= 1000 ? (v/1000).toFixed(1)+'k' : String(Math.round(v));
+
+          // Bar path helper — independent top/bottom corner radii via <path>
+          function _barPath(x, y, w, h, rTop, rBottom) {
             if (h <= 0) return '';
-            if (rTc === 0 && rBc === 0)
-              return `M${x},${y} L${x+w},${y} L${x+w},${y+h} L${x},${y+h} Z`;
-            return `M${x+rTc},${y} L${x+w-rTc},${y} Q${x+w},${y} ${x+w},${y+rTc} ` +
-                   `L${x+w},${y+h-rBc} Q${x+w},${y+h} ${x+w-rBc},${y+h} ` +
-                   `L${x+rBc},${y+h} Q${x},${y+h} ${x},${y+h-rBc} ` +
-                   `L${x},${y+rTc} Q${x},${y} ${x+rTc},${y} Z`;
+            const rt = Math.min(rTop,    w / 2, h / 2);
+            const rb = Math.min(rBottom, w / 2, h / 2);
+            if (rt === 0 && rb === 0) return '';
+            return 'M'+(x+rb)+','+(y+h)+
+              ' L'+(x+w-rb)+','+(y+h)+
+              (rb?' Q'+(x+w)+','+(y+h)+' '+(x+w)+','+(y+h-rb):' L'+(x+w)+','+(y+h))+
+              ' L'+(x+w)+','+(y+rt)+
+              (rt?' Q'+(x+w)+','+y+' '+(x+w-rt)+','+y:' L'+(x+w)+','+y)+
+              ' L'+(x+rt)+','+y+
+              (rt?' Q'+x+','+y+' '+x+','+(y+rt):' L'+x+','+y)+
+              ' L'+x+','+(y+h-rb)+
+              (rb?' Q'+x+','+(y+h)+' '+(x+rb)+','+(y+h):' L'+x+','+(y+h))+' Z';
           }
 
-          // SVG defs (only bar gradients; background is on the wrapper now)
+          // Scoped class names (UID prevents cross-chart collisions)
+          const _grpClass = 'bg' + _uid + 'g';
+          const _lblClass = 'bg' + _uid + 'l';
+
+          // SVG gradient defs for bars
           let _defs = '';
           _series.forEach((sr, j) => {
             if (sr.colorType === 'gradient') {
               const _c1 = svgEsc(sr.color || _COLORS[j % _COLORS.length]), _c2 = svgEsc(sr.gradientTo || '#FFFFFF');
-              _defs += `<linearGradient id="bar${_uid}${j}" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="${_c2}"/><stop offset="100%" stop-color="${_c1}"/></linearGradient>`;
+              _defs += '<linearGradient id="bar'+_uid+j+'" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="'+_c2+'"/><stop offset="100%" stop-color="'+_c1+'"/></linearGradient>';
             }
           });
 
-          // Hover-only data label CSS
+          // Hover-label CSS (injected into SVG so it works in both edit & view mode)
           let _styleBlock = '';
           if (_dlShow && _dlHover) {
-            _styleBlock = `<style>.${_grpClass} .${_lblClass}{opacity:0;transition:opacity .15s}.${_grpClass}:hover .${_lblClass}{opacity:1}</style>`;
+            _styleBlock = '<style>.'+_grpClass+' .'+_lblClass+'{opacity:0;transition:opacity .15s}.'+_grpClass+':hover .'+_lblClass+'{opacity:1}</style>';
+          }
+          let _s = _styleBlock + (_defs ? '<defs>'+_defs+'</defs>' : '');
+
+          // Background rect (colour only; gradient is on the wrapper div)
+          const _bgType = _cs.bgType || 'none';
+          if (_bgType === 'color') {
+            _s += '<rect x="0" y="0" width="'+_SW+'" height="'+_SH+'" fill="'+svgEsc(_cs.bgColor||'#FFFFFF')+'"/>';
           }
 
-          let _s = _styleBlock + (_defs ? `<defs>${_defs}</defs>` : '');
-
-          // grid lines + Y labels
+          // Grid lines + Y-axis labels
           [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(f => {
             const _y = (_cBot - f * _cH).toFixed(1);
             const _lineClr = f === 0 ? '#C8CDD4' : _gridClr;
-            if (_lineClr) _s += `<line x1="${_L}" y1="${_y}" x2="${_SW-_R}" y2="${_y}" stroke="${_lineClr}" stroke-width="${f===0?0.8:0.5}"/>`;
+            if (_lineClr) _s += '<line x1="'+_L+'" y1="'+_y+'" x2="'+(_SW-_R)+'" y2="'+_y+'" stroke="'+_lineClr+'" stroke-width="'+(f===0?0.8:0.5)+'"/>';
             const _yt = (+_y + 2.5).toFixed(1);
             const _yTx = _yAngle !== 0
-              ? `transform="translate(${_L-3},${_yt}) rotate(${_yAngle})" dominant-baseline="middle" text-anchor="end"`
-              : `x="${_L-3}" y="${_yt}" dominant-baseline="middle" text-anchor="end"`;
-            _s += `<text ${_yTx} font-size="6.5" fill="${_lblClr}" font-family="${_lblFont}">${_fmtY(_max * f)}</text>`;
+              ? 'transform="translate('+(_L-3)+','+_yt+') rotate('+_yAngle+')" dominant-baseline="middle" text-anchor="end"'
+              : 'x="'+(_L-3)+'" y="'+_yt+'" dominant-baseline="middle" text-anchor="end"';
+            _s += '<text '+_yTx+' font-size="6.5" fill="'+_lblClr+'" font-family="'+_lblFont+'">'+_fmtY(_max * f)+'</text>';
           });
 
-          // bars + X labels
+          // Bars + X-axis labels per category
           _xLabels.forEach((lbl, i) => {
-            const _gx = _L + i * _catW + _pad;
-            _series.forEach((sr, j) => {
-              const _v    = typeof sr.values[i] === 'number' ? sr.values[i] : 0;
-              const _bH   = Math.max(0, (_v / _max) * _cH);
-              const _bXn  = _gx + j * (_bW + 1);
+            const _gx = _L + i * _catW + _gPad;
+
+            // Render tallest bar first (visually behind); shortest last (in front)
+            const _barData = _series.map((sr, j) => ({
+              j, v: typeof sr.values[i] === 'number' ? sr.values[i] : 0, sr
+            })).sort((a, b) => b.v - a.v);
+
+            _barData.forEach(({ j, v, sr }) => {
+              const _bH   = Math.max(0, (v / _max) * _cH);
+              const _bXn  = _gx + j * _step;
               const _bYn  = _cBot - _bH;
-              const _bX   = _bXn.toFixed(1);
-              const _bY   = _bYn.toFixed(1);
               const _fill = sr.colorType === 'gradient'
-                ? `url(#bar${_uid}${j})`
+                ? ('url(#bar'+_uid+j+')')
                 : svgEsc(sr.color || _COLORS[j % _COLORS.length]);
+
               const _pd = _barPath(_bXn, _bYn, _bW, _bH, _rxT, _rxB);
               const _barShape = _pd
-                ? `<path d="${_pd}" fill="${_fill}"/>`
-                : `<rect x="${_bX}" y="${_bY}" width="${_bW.toFixed(1)}" height="${_bH.toFixed(1)}" fill="${_fill}"/>`;
+                ? '<path d="'+_pd+'" fill="'+_fill+'"/>'
+                : '<rect x="'+_bXn.toFixed(1)+'" y="'+_bYn.toFixed(1)+'" width="'+_bW.toFixed(1)+'" height="'+Math.max(0,_bH).toFixed(1)+'" fill="'+_fill+'"/>';
 
-              if (_dlShow) {
-                // Wrap bar + label in a group so hover CSS can target the label
+              if (_dlShow && v > 0) {
                 const _lx = (_bXn + _bW / 2).toFixed(1);
-                const _lyRaw = _bYn - 2.5;
-                const _lyMin = _T + _dlSize;
-                const _ly = Math.max(_lyMin, _lyRaw).toFixed(1);
-                const _lClass = _dlHover ? ` class="${_lblClass}"` : '';
-                _s += `<g class="${_grpClass}">${_barShape}<text${_lClass} x="${_lx}" y="${_ly}" font-size="${_dlSize}" fill="${_dlClr}" font-family="${_lblFont}" text-anchor="middle" dominant-baseline="auto" font-weight="600">${svgEsc(_fmtY(_v))}</text></g>`;
+                const _ly = Math.max(_T + _dlSize, _bYn - 2.5).toFixed(1);
+                const _lClass = _dlHover ? (' class="'+_lblClass+'"') : '';
+                _s += '<g class="'+_grpClass+'">'+_barShape+'<text'+_lClass+' x="'+_lx+'" y="'+_ly+'" font-size="'+_dlSize+'" fill="'+_dlClr+'" font-family="'+_lblFont+'" text-anchor="middle" dominant-baseline="auto" font-weight="600">'+svgEsc(_fmtY(v))+'</text></g>';
               } else {
                 _s += _barShape;
               }
             });
+
+            // X-axis label
             const _cx  = (_L + (i + 0.5) * _catW).toFixed(1);
             const _raw = String(lbl);
-            const _lbl = svgEsc(_raw.length > 11 ? _raw.slice(0, 10) + '…' : _raw);
+            const _lbl = svgEsc(_raw.length > 11 ? _raw.slice(0, 10) + '\u2026' : _raw);
             if (_xAngle === 0) {
-              _s += `<text x="${_cx}" y="${_cBot+11}" font-size="6.5" fill="${_lblClr}" font-family="${_lblFont}" text-anchor="middle">${_lbl}</text>`;
+              _s += '<text x="'+_cx+'" y="'+(_cBot+11)+'" font-size="6.5" fill="'+_lblClr+'" font-family="'+_lblFont+'" text-anchor="middle">'+_lbl+'</text>';
             } else {
-              _s += `<text transform="translate(${_cx},${_cBot+4}) rotate(${_xAngle})" font-size="6.5" fill="${_lblClr}" font-family="${_lblFont}" text-anchor="end" dominant-baseline="middle">${_lbl}</text>`;
+              _s += '<text transform="translate('+_cx+','+(_cBot+4)+') rotate('+_xAngle+')" font-size="6.5" fill="'+_lblClr+'" font-family="'+_lblFont+'" text-anchor="end" dominant-baseline="middle">'+_lbl+'</text>';
             }
           });
 
-          return `<svg width="100%" height="100%" viewBox="0 0 ${_SW} ${_SH}" preserveAspectRatio="none">${_s}</svg>`;
+          // pointer-events:auto ensures hover CSS fires even when parent has pointer-events:none
+          return '<svg width="100%" height="100%" viewBox="0 0 '+_SW+' '+_SH+'" preserveAspectRatio="none" style="pointer-events:auto;">'+_s+'</svg>';
         }
         chartContent = `
           <rect x="20" y="50" width="30" height="50" rx="3" fill="#1E7F5C" opacity="0.9"/>
@@ -593,8 +612,9 @@ window.OverlayElements = (function () {
         break;
       case 'graph': {
         const chartMeta = el.meta || {};
-        // Dynamically resolve background for column charts so that None = fully transparent,
-        // flat color = that color, gradient = that gradient. Other chart types keep #fff.
+        // Mark node so view-mode CSS can re-enable pointer-events for hover
+        node.dataset.graph = '1';
+        // Dynamic background for column charts (transparent / flat / gradient)
         let _graphBg = '#fff';
         let _graphBorder = '1.5px solid #E4E7EB';
         if ((chartMeta.chartType || 'line') === 'column') {
@@ -606,7 +626,7 @@ window.OverlayElements = (function () {
           } else if (_bt2 === 'color') {
             _graphBg = _cs2.bgColor || '#FFFFFF';
           } else if (_bt2 === 'gradient') {
-            _graphBg = `linear-gradient(180deg, ${_cs2.bgGradFrom || '#FFFFFF'}, ${_cs2.bgGradTo || '#E8F5F0'})`;
+            _graphBg = 'linear-gradient(180deg, ' + (_cs2.bgGradFrom || '#FFFFFF') + ', ' + (_cs2.bgGradTo || '#E8F5F0') + ')';
           }
         }
         applyStyle(node, { background: _graphBg, border: _graphBorder, flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
