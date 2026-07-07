@@ -2897,16 +2897,19 @@ function renderColumnChartAppearanceTab(id, el, body) {
   const cd  = m.columnData  || { series: [] };
   const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
 
-  const bgType      = cs.bgType      || 'none';
-  const bgColor     = cs.bgColor     || '#FFFFFF';
-  const bgGradFrom  = cs.bgGradFrom  || '#FFFFFF';
-  const bgGradTo    = cs.bgGradTo    || '#E8F5F0';
-  const barWidthPct = typeof cs.barWidthPct === 'number' ? cs.barWidthPct : 70;
-  const gridColor   = cs.gridColor !== undefined ? cs.gridColor : '#E4E7EB';
-  const labelColor  = cs.labelColor  || '#6B7480';
-  const labelFont   = cs.labelFont   || 'sans-serif';
-  const xAngle      = typeof cs.xAngle === 'number' ? cs.xAngle : -90;
-  const yAngle      = typeof cs.yAngle === 'number' ? cs.yAngle : 0;
+  const bgType        = cs.bgType        || 'none';
+  const bgColor       = cs.bgColor       || '#FFFFFF';
+  const bgGradFrom    = cs.bgGradFrom    || '#FFFFFF';
+  const bgGradTo      = cs.bgGradTo      || '#E8F5F0';
+  const barWidthPct   = typeof cs.barWidthPct === 'number' ? cs.barWidthPct : 70;
+  const gridColor     = cs.gridColor !== undefined ? cs.gridColor : '#E4E7EB';
+  const labelColor    = cs.labelColor    || '#6B7480';
+  const labelFont     = cs.labelFont     || 'sans-serif';
+  const xAngle        = typeof cs.xAngle === 'number' ? cs.xAngle : -90;
+  const yAngle        = typeof cs.yAngle === 'number' ? cs.yAngle : 0;
+  const showDataLabels  = cs.showDataLabels !== false;
+  const dataLabelColor  = cs.dataLabelColor  || '#374151';
+  const dataLabelSize   = typeof cs.dataLabelSize === 'number' ? cs.dataLabelSize : 7;
 
   const secLabel = txt => `<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin:10px 0 6px;">${txt}</div>`;
 
@@ -3067,6 +3070,31 @@ function renderColumnChartAppearanceTab(id, el, body) {
         oninput="setColStyleQ('${id}','yAngle',+this.value);this.parentElement.previousElementSibling.querySelector('span').textContent='('+this.value+'°)';"
         onchange="pushHistory()">
     </div>
+    <div class="divider"></div>
+
+    <!-- DATA LABELS -->
+    ${secLabel('Data Labels')}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:${showDataLabels?'6px':'2px'};">
+      <span style="font-size:10px;color:var(--text-faint);flex:1;">Show values above bars</span>
+      <button onclick="setColStyle('${id}','showDataLabels',${!showDataLabels})"
+        style="position:relative;width:36px;height:20px;border:none;border-radius:10px;cursor:pointer;padding:0;
+        background:${showDataLabels?'#1E7F5C':'#C8CDD4'};transition:background .15s;">
+        <span style="position:absolute;top:3px;left:${showDataLabels?'19':'3'}px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.18);"></span>
+      </button>
+    </div>
+    ${showDataLabels ? `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span style="font-size:10px;color:var(--text-faint);flex:1;">Label color</span>
+      <input type="color" value="${dataLabelColor}"
+        style="width:32px;height:28px;border:none;border-radius:5px;padding:2px;cursor:pointer;background:none;"
+        oninput="setColStyleQ('${id}','dataLabelColor',this.value)" onchange="pushHistory()">
+    </div>
+    <div class="field-label" style="margin-bottom:4px;">Label size <span style="color:var(--text-faint);font-weight:400;">(${dataLabelSize}px)</span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+      <input type="range" min="5" max="12" value="${dataLabelSize}" style="flex:1;"
+        oninput="setColStyleQ('${id}','dataLabelSize',+this.value);this.parentElement.previousElementSibling.querySelector('span').textContent='('+this.value+'px)';"
+        onchange="pushHistory()">
+    </div>` : ''}
     <div class="divider"></div>
     <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
   `;
