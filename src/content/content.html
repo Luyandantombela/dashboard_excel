@@ -1582,6 +1582,7 @@ function makeDraggable(node, handles, rotateHandle, el) {
       rotating = true;
       sx=e.clientX; sy=e.clientY;
       startRotation = el.rotation || 0;
+      ox=el.left; oy=el.top; ow=el.width; oh=el.height;
       e.stopPropagation(); e.preventDefault();
       return;
     }
