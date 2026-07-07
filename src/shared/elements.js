@@ -757,7 +757,7 @@ window.OverlayElements = (function () {
       label: def.label || '',
       fill: null,
       binding: def.binding || null,
-      meta: def.meta || {},
+      meta: def.meta ? JSON.parse(JSON.stringify(def.meta)) : {},
       rotation: 0
     }, overrides || {});
   }
