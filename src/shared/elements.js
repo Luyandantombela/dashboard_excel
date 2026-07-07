@@ -137,7 +137,7 @@ window.OverlayElements = (function () {
     'shield-off', 'shield-alert'
   ];
 
-  function chartSVG(title, chartType = 'line', meta) {
+  function chartSVG(title, chartType = 'line', meta, elId) {
     let chartContent = '';
     switch (chartType) {
       case 'area':
@@ -167,36 +167,90 @@ window.OverlayElements = (function () {
         const _series = (_cd && _cd.series) ? _cd.series.filter(s => s.values && s.values.length > 0) : [];
         if (_xLabels.length > 0 && _series.length > 0) {
           const _COLORS = ['#1E7F5C','#E8A33D','#3B82F6','#D2534A','#8B5CF6','#EC4899'];
+          const _cs  = (meta && meta.columnStyle) || {};
+          const _uid = elId ? String(elId).replace(/[^a-z0-9]/gi,'') : 'ch';
+
+          // style props
+          const _bgType  = _cs.bgType || 'none';
+          const _barPct  = Math.min(100, Math.max(10, typeof _cs.barWidthPct === 'number' ? _cs.barWidthPct : 70)) / 100;
+          const _gridClrRaw = _cs.gridColor === 'none' ? null : (_cs.gridColor || '#E4E7EB');
+          const _gridClr    = _gridClrRaw ? svgEsc(_gridClrRaw) : null;
+          const _lblClr  = svgEsc(_cs.labelColor || '#6B7480');
+          const _lblFont = svgEsc(_cs.labelFont   || 'sans-serif');
+          const _xAngle  = typeof _cs.xAngle === 'number' ? _cs.xAngle : -90;
+          const _yAngle  = typeof _cs.yAngle === 'number' ? _cs.yAngle : 0;
+
           const _n = _xLabels.length, _nS = _series.length;
           let _max = 0;
           _series.forEach(s => s.values.forEach(v => { if (typeof v === 'number' && v > _max) _max = v; }));
           if (_max <= 0) _max = 1;
-          const _L = 38, _R = 8, _T = 12, _B = 26, _SW = 280, _SH = 130;
+
+          const _L = 40, _R = 8, _T = 12, _B = 58, _SW = 280, _SH = 150;
           const _cW = _SW - _L - _R, _cH = _SH - _T - _B, _cBot = _SH - _B;
-          const _catW = _cW / _n;
-          const _pad = _catW * 0.12;
-          const _bW = Math.max(2, (_catW - _pad * 2) / _nS - 1);
-          let _s = '';
-          [0, 0.5, 1].forEach(f => {
-            const _y = (_cBot - f * _cH).toFixed(1);
-            _s += `<line x1="${_L}" y1="${_y}" x2="${_SW-_R}" y2="${_y}" stroke="#E4E7EB" stroke-width="0.5"/>`;
-            _s += `<text x="${_L-3}" y="${(+_y+3).toFixed(1)}" font-size="7" fill="#9AA2AC" text-anchor="end">${Math.round(_max*f)}</text>`;
+          const _catW   = _cW / _n;
+          const _groupW = _catW * _barPct;
+          const _pad    = (_catW - _groupW) / 2;
+          const _bW     = Math.max(2, _groupW / _nS - 1);
+          const _fmtY   = v => v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 10000 ? (v/1000).toFixed(0)+'k' : v >= 1000 ? (v/1000).toFixed(1)+'k' : String(Math.round(v));
+
+          // SVG defs
+          let _defs = '';
+          if (_bgType === 'gradient') {
+            const _gf = svgEsc(_cs.bgGradFrom || '#FFFFFF'), _gt2 = svgEsc(_cs.bgGradTo || '#E8F5F0');
+            _defs += `<linearGradient id="bg${_uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${_gf}"/><stop offset="100%" stop-color="${_gt2}"/></linearGradient>`;
+          }
+          _series.forEach((sr, j) => {
+            if (sr.colorType === 'gradient') {
+              const _c1 = svgEsc(sr.color || _COLORS[j % _COLORS.length]), _c2 = svgEsc(sr.gradientTo || '#FFFFFF');
+              _defs += `<linearGradient id="bar${_uid}${j}" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="${_c2}"/><stop offset="100%" stop-color="${_c1}"/></linearGradient>`;
+            }
           });
-          _s += `<line x1="${_L}" y1="${_cBot}" x2="${_SW-_R}" y2="${_cBot}" stroke="#C8CDD4" stroke-width="0.8"/>`;
+
+          let _s = _defs ? `<defs>${_defs}</defs>` : '';
+
+          // background
+          if (_bgType === 'color') {
+            _s += `<rect x="0" y="0" width="${_SW}" height="${_SH}" fill="${svgEsc(_cs.bgColor||'#FFFFFF')}"/>`;
+          } else if (_bgType === 'gradient') {
+            _s += `<rect x="0" y="0" width="${_SW}" height="${_SH}" fill="url(#bg${_uid})"/>`;
+          }
+
+          // grid lines + Y labels
+          [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(f => {
+            const _y = (_cBot - f * _cH).toFixed(1);
+            const _lineClr = f === 0 ? '#C8CDD4' : _gridClr;
+            if (_lineClr) _s += `<line x1="${_L}" y1="${_y}" x2="${_SW-_R}" y2="${_y}" stroke="${_lineClr}" stroke-width="${f===0?0.8:0.5}"/>`;
+            const _yt = (+_y + 2.5).toFixed(1);
+            const _yTx = _yAngle !== 0
+              ? `transform="translate(${_L-3},${_yt}) rotate(${_yAngle})" dominant-baseline="middle" text-anchor="end"`
+              : `x="${_L-3}" y="${_yt}" dominant-baseline="middle" text-anchor="end"`;
+            _s += `<text ${_yTx} font-size="6.5" fill="${_lblClr}" font-family="${_lblFont}">${_fmtY(_max * f)}</text>`;
+          });
+
+          // bars + X labels
           _xLabels.forEach((lbl, i) => {
             const _gx = _L + i * _catW + _pad;
             _series.forEach((sr, j) => {
-              const _v = typeof sr.values[i] === 'number' ? sr.values[i] : 0;
-              const _bH = Math.max(0, (_v / _max) * _cH);
-              const _bX = (_gx + j * (_bW + 1)).toFixed(1);
-              const _bY = (_cBot - _bH).toFixed(1);
-              _s += `<rect x="${_bX}" y="${_bY}" width="${_bW.toFixed(1)}" height="${_bH.toFixed(1)}" fill="${sr.color||_COLORS[j%_COLORS.length]}" rx="1.5"/>`;
+              const _v    = typeof sr.values[i] === 'number' ? sr.values[i] : 0;
+              const _bH   = Math.max(0, (_v / _max) * _cH);
+              const _bX   = (_gx + j * (_bW + 1)).toFixed(1);
+              const _bY   = (_cBot - _bH).toFixed(1);
+              const _fill = sr.colorType === 'gradient'
+                ? `url(#bar${_uid}${j})`
+                : svgEsc(sr.color || _COLORS[j % _COLORS.length]);
+              _s += `<rect x="${_bX}" y="${_bY}" width="${_bW.toFixed(1)}" height="${_bH.toFixed(1)}" fill="${_fill}" rx="1.5"/>`;
             });
-            const _cx = (_L + (i + 0.5) * _catW).toFixed(1);
-            const _raw = String(lbl); const _lbl = svgEsc(_raw.length > 5 ? _raw.slice(0,4)+'…' : _raw);
-            _s += `<text x="${_cx}" y="${_cBot+11}" font-size="7" fill="#6B7480" text-anchor="middle">${_lbl}</text>`;
+            const _cx  = (_L + (i + 0.5) * _catW).toFixed(1);
+            const _raw = String(lbl);
+            const _lbl = svgEsc(_raw.length > 11 ? _raw.slice(0, 10) + '…' : _raw);
+            if (_xAngle === 0) {
+              _s += `<text x="${_cx}" y="${_cBot+11}" font-size="6.5" fill="${_lblClr}" font-family="${_lblFont}" text-anchor="middle">${_lbl}</text>`;
+            } else {
+              _s += `<text transform="translate(${_cx},${_cBot+4}) rotate(${_xAngle})" font-size="6.5" fill="${_lblClr}" font-family="${_lblFont}" text-anchor="end" dominant-baseline="middle">${_lbl}</text>`;
+            }
           });
-          const _safeTitle = svgEsc(title||'Column Chart');
+
+          const _safeTitle = svgEsc(title || 'Column Chart');
           return `<div style="font-size:10.5px;color:#9AA2AC;font-weight:600;margin-bottom:4px;">${_safeTitle}</div><svg width="100%" height="100%" viewBox="0 0 ${_SW} ${_SH}" preserveAspectRatio="none">${_s}</svg>`;
         }
         chartContent = `
@@ -503,7 +557,7 @@ window.OverlayElements = (function () {
       case 'graph':
         const chartMeta = el.meta || {};
         applyStyle(node, { background: '#fff', border: '1.5px solid #E4E7EB', flexDirection: 'column', padding: '10px', alignItems: 'stretch' });
-        node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line', chartMeta);
+        node.innerHTML = chartSVG(el.label || '', chartMeta.chartType || 'line', chartMeta, el.id);
         break;
       case 'group': {
         const m = el.meta || {};
