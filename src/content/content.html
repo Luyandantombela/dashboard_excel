@@ -5,7 +5,7 @@
 <title>Overlay — Dashboard Builder</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Raleway:wght@400;500;600;700&family=Lato:wght@400;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="../shared/elements.js"></script>
@@ -377,6 +377,8 @@
   .view-mode .rail{display:none;}
   .view-mode .publish-btn, .view-mode .publish-status, .view-mode #undoBtn, .view-mode #redoBtn{display:none;}
   .view-mode .dash-el{pointer-events:none;}
+  /* Re-enable pointer events for chart elements so hover labels work in view mode */
+  .view-mode [data-graph]{pointer-events:auto;cursor:default;}
   .view-mode .empty-hint{display:none;}
   .view-mode .canvas{background-image:none;background-color:#fff;}
 
@@ -2936,6 +2938,7 @@ function renderColumnChartAppearanceTab(id, el, body) {
   const labelFont     = cs.labelFont     || 'sans-serif';
   const xAngle        = typeof cs.xAngle === 'number' ? cs.xAngle : -90;
   const yAngle        = typeof cs.yAngle === 'number' ? cs.yAngle : 0;
+  const barGroupGap     = typeof cs.barGroupGap === 'number' ? cs.barGroupGap : 100;
   const showDataLabels  = cs.showDataLabels !== false;
   const dataLabelHover  = cs.dataLabelHover === true;
   const dataLabelColor  = cs.dataLabelColor  || '#374151';
@@ -3047,6 +3050,12 @@ function renderColumnChartAppearanceTab(id, el, body) {
         oninput="setColStyleQ('${id}','barWidthPct',+this.value);this.parentElement.previousElementSibling.querySelector('span').textContent='('+this.value+'%)';"
         onchange="pushHistory()">
     </div>
+    <div class="field-label" style="margin-bottom:4px;">Bar spacing <span style="color:var(--text-faint);font-weight:400;">(${barGroupGap}%)</span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <input type="range" min="0" max="100" value="${barGroupGap}" style="flex:1;"
+        oninput="setColStyleQ('${id}','barGroupGap',+this.value);this.parentElement.previousElementSibling.querySelector('span').textContent='('+this.value+'%)';"
+        onchange="pushHistory()">
+    </div>
     <div class="field-label" style="margin-bottom:4px;">Top corner roundness <span style="color:var(--text-faint);font-weight:400;">(${rxTop}px)</span></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
       <input type="range" min="0" max="20" value="${rxTop}" style="flex:1;"
@@ -3097,12 +3106,25 @@ function renderColumnChartAppearanceTab(id, el, body) {
       <select class="field-input" onchange="setColStyle('${id}','labelFont',this.value)">
         ${[
           ['sans-serif','System Sans-serif'],
-          ['Arial, sans-serif','Arial'],
           ['Inter, sans-serif','Inter'],
-          ['Georgia, serif','Georgia'],
-          ['Courier New, monospace','Courier New'],
+          ['Roboto, sans-serif','Roboto'],
+          ['Open Sans, sans-serif','Open Sans'],
+          ['Poppins, sans-serif','Poppins'],
+          ['Nunito, sans-serif','Nunito'],
+          ['Outfit, sans-serif','Outfit'],
+          ['DM Sans, sans-serif','DM Sans'],
+          ['Plus Jakarta Sans, sans-serif','Plus Jakarta Sans'],
+          ['Raleway, sans-serif','Raleway'],
+          ['Lato, sans-serif','Lato'],
+          ['Montserrat, sans-serif','Montserrat'],
+          ['Space Grotesk, sans-serif','Space Grotesk'],
+          ['Arial, sans-serif','Arial'],
           ['Verdana, sans-serif','Verdana'],
-          ['Trebuchet MS, sans-serif','Trebuchet MS']
+          ['Trebuchet MS, sans-serif','Trebuchet MS'],
+          ['Georgia, serif','Georgia'],
+          ['Times New Roman, serif','Times New Roman'],
+          ['Courier New, monospace','Courier New'],
+          ['JetBrains Mono, monospace','JetBrains Mono']
         ].map(([v,l])=>`<option value="${v}" ${labelFont===v?'selected':''}>${l}</option>`).join('')}
       </select>
     </div>
