@@ -185,6 +185,11 @@ window.OverlayElements = (function () {
           _series.forEach(s => s.values.forEach(v => { if (typeof v === 'number' && v > _max) _max = v; }));
           if (_max <= 0) _max = 1;
 
+          // data label settings
+          const _dlShow = _cs.showDataLabels !== false;
+          const _dlClr  = svgEsc(_cs.dataLabelColor || '#374151');
+          const _dlSize = typeof _cs.dataLabelSize === 'number' ? _cs.dataLabelSize : 7;
+
           const _L = 40, _R = 8, _T = 12, _B = 58, _SW = 280, _SH = 150;
           const _cW = _SW - _L - _R, _cH = _SH - _T - _B, _cBot = _SH - _B;
           const _catW   = _cW / _n;
@@ -239,6 +244,14 @@ window.OverlayElements = (function () {
                 ? `url(#bar${_uid}${j})`
                 : svgEsc(sr.color || _COLORS[j % _COLORS.length]);
               _s += `<rect x="${_bX}" y="${_bY}" width="${_bW.toFixed(1)}" height="${_bH.toFixed(1)}" fill="${_fill}" rx="1.5"/>`;
+              if (_dlShow && typeof _v === 'number') {
+                const _lx = (+_bX + _bW / 2).toFixed(1);
+                const _lyRaw = +_bY - 2.5;
+                // clamp so label stays inside the SVG viewBox (at least fontSize + top padding below top edge)
+                const _lyMin = _T + _dlSize;
+                const _ly = Math.max(_lyMin, _lyRaw).toFixed(1);
+                _s += `<text x="${_lx}" y="${_ly}" font-size="${_dlSize}" fill="${_dlClr}" font-family="${_lblFont}" text-anchor="middle" dominant-baseline="auto" font-weight="600">${svgEsc(_fmtY(_v))}</text>`;
+              }
             });
             const _cx  = (_L + (i + 0.5) * _catW).toFixed(1);
             const _raw = String(lbl);
