@@ -2641,21 +2641,25 @@ function renderTab(tab, id) {
     renderGroupPanel();
   } else if (tab === 'appearance' && el.type === 'graph') {
     const m = el.meta || {};
-    const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
-    body.innerHTML = `
-      <div class="field">
-        <div class="field-label">Chart Type</div>
-        <select class="field-input" onchange="setMeta('${id}','chartType',this.value)">
-          ${chartTypes.map(ct => `<option value="${ct.id}" ${((m.chartType||'line')===ct.id)?'selected':''}>${ct.label}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field">
-        <div class="field-label">Label</div>
-        <input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()">
-      </div>
-      <div class="divider"></div>
-      <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
-    `;
+    if ((m.chartType || 'line') === 'column') {
+      renderColumnChartAppearanceTab(id, el, body);
+    } else {
+      const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
+      body.innerHTML = `
+        <div class="field">
+          <div class="field-label">Chart Type</div>
+          <select class="field-input" onchange="setMeta('${id}','chartType',this.value)">
+            ${chartTypes.map(ct => `<option value="${ct.id}" ${((m.chartType||'line')===ct.id)?'selected':''}>${ct.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Label</div>
+          <input class="field-input" value="${el.label||''}" oninput="updateLabel('${id}', this.value)" onblur="pushHistory()">
+        </div>
+        <div class="divider"></div>
+        <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+      `;
+    }
   } else if (tab === 'appearance') {
     const showText = ['text','shape','group','repeating','popup','floating','input','multiline','dropdown','date','upload','graph'].includes(el.type);
     body.innerHTML = `
@@ -2776,11 +2780,11 @@ async function captureColumnXAxis(id) {
   try {
     await Excel.run(async (context) => {
       const range = context.workbook.getSelectedRange();
-      range.load('address,values');
+      range.load('address,text');
       await context.sync();
       cd.xAxisRange = range.address;
-      // Flatten values — support a single row or column
-      const flat = range.values.flat().filter(v => v !== '' && v !== null && v !== undefined);
+      // Use .text so dates and numbers appear exactly as formatted in Excel
+      const flat = range.text.flat().filter(v => v !== '' && v !== null && v !== undefined);
       cd.xLabels = flat;
       redrawElement(el);
       renderTab('data', id);
@@ -2854,6 +2858,220 @@ function cycleColumnSeriesColor(id, i) {
   renderTab('data', id);
   pushHistory();
 }
+// ---- Column chart appearance helpers ----
+function getColStyle(id) {
+  const el = elements[id];
+  if (!el.meta) el.meta = {};
+  if (!el.meta.columnStyle) el.meta.columnStyle = {};
+  return el.meta.columnStyle;
+}
+// Full redraw + panel refresh (for discrete toggles)
+function setColStyle(id, key, val) {
+  const cs = getColStyle(id);
+  cs[key] = val;
+  // Cache last non-none grid color so toggling None→Color can restore it
+  if (key === 'gridColor' && val !== 'none') cs.gridColorCustom = val;
+  redrawElement(elements[id]);
+  renderTab('appearance', id);
+  pushHistory();
+}
+// Quiet update for sliders / color pickers (no panel re-render)
+function setColStyleQ(id, key, val) {
+  const cs = getColStyle(id);
+  cs[key] = val;
+  if (key === 'gridColor' && val !== 'none') cs.gridColorCustom = val;
+  redrawElement(elements[id]);
+}
+function setSeriesColorType(id, i, type) {
+  const cd = getColumnData(id);
+  if (cd.series[i]) { cd.series[i].colorType = type; redrawElement(elements[id]); renderTab('appearance', id); pushHistory(); }
+}
+function setSeriesGradientTo(id, i, color) {
+  const cd = getColumnData(id);
+  if (cd.series[i]) { cd.series[i].gradientTo = color; redrawElement(elements[id]); }
+}
+
+function renderColumnChartAppearanceTab(id, el, body) {
+  const m   = el.meta || {};
+  const cs  = m.columnStyle || {};
+  const cd  = m.columnData  || { series: [] };
+  const chartTypes = window.OverlayElements && window.OverlayElements.CHART_TYPES ? window.OverlayElements.CHART_TYPES : [];
+
+  const bgType      = cs.bgType      || 'none';
+  const bgColor     = cs.bgColor     || '#FFFFFF';
+  const bgGradFrom  = cs.bgGradFrom  || '#FFFFFF';
+  const bgGradTo    = cs.bgGradTo    || '#E8F5F0';
+  const barWidthPct = typeof cs.barWidthPct === 'number' ? cs.barWidthPct : 70;
+  const gridColor   = cs.gridColor !== undefined ? cs.gridColor : '#E4E7EB';
+  const labelColor  = cs.labelColor  || '#6B7480';
+  const labelFont   = cs.labelFont   || 'sans-serif';
+  const xAngle      = typeof cs.xAngle === 'number' ? cs.xAngle : -90;
+  const yAngle      = typeof cs.yAngle === 'number' ? cs.yAngle : 0;
+
+  const secLabel = txt => `<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin:10px 0 6px;">${txt}</div>`;
+
+  // ── series bar appearance ──
+  const seriesRowsClean = (cd.series || []).map((s, i) => {
+    const sc = s.color     || COLUMN_SERIES_COLORS[i % COLUMN_SERIES_COLORS.length];
+    const ct = s.colorType || 'solid';
+    const gt = s.gradientTo || '#FFFFFF';
+    const solidActive    = ct === 'solid';
+    const gradientActive = ct === 'gradient';
+    return `
+    <div style="background:rgba(0,0,0,.03);border-radius:8px;padding:7px 8px;margin-bottom:5px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+        <div style="width:10px;height:10px;border-radius:2px;background:${sc};flex-shrink:0;border:1px solid rgba(0,0,0,.12);"></div>
+        <div style="font-size:10px;font-weight:600;color:var(--text-main);flex:1;">${escapeHtml(s.name||'Series '+(i+1))}</div>
+      </div>
+      <div style="font-size:9px;color:var(--text-faint);margin-bottom:4px;">Fill type</div>
+      <div style="display:flex;gap:2px;background:rgba(0,0,0,.06);border-radius:7px;padding:2px;margin-bottom:6px;">
+        <button onclick="setSeriesColorType('${id}',${i},'solid')"
+          style="flex:1;padding:4px 0;font-size:10px;border:none;border-radius:5px;cursor:pointer;font-weight:600;
+          background:${solidActive?'#fff':'transparent'};color:${solidActive?'#1E7F5C':'#9AA2AC'};
+          box-shadow:${solidActive?'0 1px 3px rgba(0,0,0,.12)':'none'};">Solid</button>
+        <button onclick="setSeriesColorType('${id}',${i},'gradient')"
+          style="flex:1;padding:4px 0;font-size:10px;border:none;border-radius:5px;cursor:pointer;font-weight:600;
+          background:${gradientActive?'#fff':'transparent'};color:${gradientActive?'#1E7F5C':'#9AA2AC'};
+          box-shadow:${gradientActive?'0 1px 3px rgba(0,0,0,.12)':'none'};">Gradient</button>
+      </div>
+      ${gradientActive ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+          <span style="font-size:10px;color:var(--text-faint);flex:1;">Fade to</span>
+          <input type="color" value="${gt}"
+            style="width:32px;height:28px;border:none;border-radius:5px;padding:2px;cursor:pointer;background:none;"
+            oninput="setSeriesGradientTo('${id}',${i},this.value)"
+            onchange="pushHistory()">
+        </div>` : ''}
+    </div>`;
+  }).join('');
+
+  const noSeriesMsg = cd.series && cd.series.length > 0 ? '' :
+    `<div style="font-size:10px;color:var(--text-faint);text-align:center;padding:8px 0;">Add series in the Data tab first</div>`;
+
+  body.innerHTML = `
+    <!-- chart type + label -->
+    <div class="field">
+      <div class="field-label">Chart Type</div>
+      <select class="field-input" onchange="setMeta('${id}','chartType',this.value)">
+        ${chartTypes.map(ct2 => `<option value="${ct2.id}" ${((m.chartType||'line')===ct2.id)?'selected':''}>${ct2.label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <div class="field-label">Label</div>
+      <input class="field-input" value="${escapeHtml(el.label||'')}" oninput="updateLabel('${id}',this.value)" onblur="pushHistory()">
+    </div>
+    <div class="divider"></div>
+
+    <!-- BACKGROUND -->
+    ${secLabel('Background')}
+    <div style="display:flex;gap:2px;background:rgba(0,0,0,.06);border-radius:7px;padding:2px;margin-bottom:6px;">
+      <button onclick="setColStyle('${id}','bgType','none')"
+        style="flex:1;padding:5px 0;font-size:10px;border:none;border-radius:5px;cursor:pointer;font-weight:600;
+        background:${bgType==='none'?'#fff':'transparent'};color:${bgType==='none'?'#1E7F5C':'#9AA2AC'};
+        box-shadow:${bgType==='none'?'0 1px 3px rgba(0,0,0,.12)':'none'};">None</button>
+      <button onclick="setColStyle('${id}','bgType','color')"
+        style="flex:1;padding:5px 0;font-size:10px;border:none;border-radius:5px;cursor:pointer;font-weight:600;
+        background:${bgType==='color'?'#fff':'transparent'};color:${bgType==='color'?'#1E7F5C':'#9AA2AC'};
+        box-shadow:${bgType==='color'?'0 1px 3px rgba(0,0,0,.12)':'none'};">Color</button>
+      <button onclick="setColStyle('${id}','bgType','gradient')"
+        style="flex:1;padding:5px 0;font-size:10px;border:none;border-radius:5px;cursor:pointer;font-weight:600;
+        background:${bgType==='gradient'?'#fff':'transparent'};color:${bgType==='gradient'?'#1E7F5C':'#9AA2AC'};
+        box-shadow:${bgType==='gradient'?'0 1px 3px rgba(0,0,0,.12)':'none'};">Gradient</button>
+    </div>
+    ${bgType==='color' ? `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10px;color:var(--text-faint);flex:1;">Background color</span>
+        <input type="color" value="${bgColor}"
+          style="width:32px;height:28px;border:none;border-radius:5px;padding:2px;cursor:pointer;background:none;"
+          oninput="setColStyleQ('${id}','bgColor',this.value)" onchange="pushHistory()">
+      </div>` : ''}
+    ${bgType==='gradient' ? `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="font-size:10px;color:var(--text-faint);flex:1;">From</span>
+        <input type="color" value="${bgGradFrom}"
+          style="width:32px;height:28px;border:none;border-radius:5px;padding:2px;cursor:pointer;background:none;"
+          oninput="setColStyleQ('${id}','bgGradFrom',this.value)" onchange="pushHistory()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10px;color:var(--text-faint);flex:1;">To</span>
+        <input type="color" value="${bgGradTo}"
+          style="width:32px;height:28px;border:none;border-radius:5px;padding:2px;cursor:pointer;background:none;"
+          oninput="setColStyleQ('${id}','bgGradTo',this.value)" onchange="pushHistory()">
+      </div>` : ''}
+    <div class="divider"></div>
+
+    <!-- BARS -->
+    ${secLabel('Bars')}
+    <div class="field-label" style="margin-bottom:4px;">Width <span style="color:var(--text-faint);font-weight:400;">(${barWidthPct}%)</span></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <input type="range" min="20" max="100" value="${barWidthPct}" style="flex:1;"
+        oninput="setColStyleQ('${id}','barWidthPct',+this.value);this.parentElement.previousElementSibling.querySelector('span').textContent='('+this.value+'%)';"
+        onchange="pushHistory()">
+    </div>
+    ${noSeriesMsg}
+    ${seriesRowsClean}
+    <div class="divider"></div>
+
+    <!-- GRID LINES -->
+    ${secLabel('Grid Lines')}
+    <div style="display:flex;gap:2px;background:rgba(0,0,0,.06);border-radius:7px;padding:2px;margin-bottom:6px;">
+      <button onclick="setColStyle('${id}','gridColor','none')"
+        style="flex:1;padding:5px 0;font-size:10px;border:none;border-radius:5px;cursor:pointer;font-weight:600;
+        background:${gridColor==='none'?'#fff':'transparent'};color:${gridColor==='none'?'#1E7F5C':'#9AA2AC'};
+        box-shadow:${gridColor==='none'?'0 1px 3px rgba(0,0,0,.12)':'none'};">None</button>
+      <button onclick="setColStyle('${id}','gridColor',getColStyle('${id}').gridColorCustom||'#E4E7EB')"
+        style="flex:1;padding:5px 0;font-size:10px;border:none;border-radius:5px;cursor:pointer;font-weight:600;
+        background:${gridColor!=='none'?'#fff':'transparent'};color:${gridColor!=='none'?'#1E7F5C':'#9AA2AC'};
+        box-shadow:${gridColor!=='none'?'0 1px 3px rgba(0,0,0,.12)':'none'};">Color</button>
+    </div>
+    ${gridColor!=='none' ? `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10px;color:var(--text-faint);flex:1;">Grid color</span>
+        <input type="color" value="${gridColor==='none'?'#E4E7EB':gridColor}"
+          style="width:32px;height:28px;border:none;border-radius:5px;padding:2px;cursor:pointer;background:none;"
+          oninput="setColStyleQ('${id}','gridColor',this.value)" onchange="pushHistory()">
+      </div>` : ''}
+    <div class="divider"></div>
+
+    <!-- AXIS LABELS -->
+    ${secLabel('Axis Labels')}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span style="font-size:10px;color:var(--text-faint);flex:1;">Color</span>
+      <input type="color" value="${labelColor}"
+        style="width:32px;height:28px;border:none;border-radius:5px;padding:2px;cursor:pointer;background:none;"
+        oninput="setColStyleQ('${id}','labelColor',this.value)" onchange="pushHistory()">
+    </div>
+    <div class="field" style="margin-bottom:8px;">
+      <div class="field-label">Font</div>
+      <select class="field-input" onchange="setColStyle('${id}','labelFont',this.value)">
+        ${[
+          ['sans-serif','System Sans-serif'],
+          ['Arial, sans-serif','Arial'],
+          ['Inter, sans-serif','Inter'],
+          ['Georgia, serif','Georgia'],
+          ['Courier New, monospace','Courier New'],
+          ['Verdana, sans-serif','Verdana'],
+          ['Trebuchet MS, sans-serif','Trebuchet MS']
+        ].map(([v,l])=>`<option value="${v}" ${labelFont===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field-label" style="margin-bottom:4px;">X-axis label angle <span style="color:var(--text-faint);font-weight:400;">(${xAngle}°)</span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <input type="range" min="-90" max="0" value="${xAngle}" style="flex:1;"
+        oninput="setColStyleQ('${id}','xAngle',+this.value);this.parentElement.previousElementSibling.querySelector('span').textContent='('+this.value+'°)';"
+        onchange="pushHistory()">
+    </div>
+    <div class="field-label" style="margin-bottom:4px;">Y-axis label angle <span style="color:var(--text-faint);font-weight:400;">(${yAngle}°)</span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+      <input type="range" min="-90" max="0" value="${yAngle}" style="flex:1;"
+        oninput="setColStyleQ('${id}','yAngle',+this.value);this.parentElement.previousElementSibling.querySelector('span').textContent='('+this.value+'°)';"
+        onchange="pushHistory()">
+    </div>
+    <div class="divider"></div>
+    <button class="btn-del" onclick="deleteElement('${id}')">Delete element</button>
+  `;
+}
+
 function liveSetFill(id, hex){ elements[id].fill = hex; redrawElement(elements[id]); }
 function liveSetBg(id, hex){ if (!elements[id].meta) elements[id].meta = {}; elements[id].meta.bg = hex; redrawElement(elements[id]); }
 function commitColorChange(id){ pushHistory(); if (panelEl) renderTab('appearance', id); }
