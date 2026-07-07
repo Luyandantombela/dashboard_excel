@@ -199,10 +199,10 @@ window.OverlayElements = (function () {
           const _groupW = _catW * _barPct;
 
           // Bar width + per-group step (controls overlap vs separation)
+          // 0% → step=0 (all bars perfectly stacked on same X); 100% → fully spread
           const _bW       = Math.max(2, _groupW / _nS - 1);
           const _stepFull = _bW + 1;
-          const _stepMin  = Math.min(3, _stepFull * 0.12);
-          const _step     = _stepMin + (_groupGapPct / 100) * (_stepFull - _stepMin);
+          const _step     = (_groupGapPct / 100) * _stepFull;
           const _totalGW  = _bW + Math.max(0, _nS - 1) * _step;
           const _gPad     = (_catW - _totalGW) / 2;
 
